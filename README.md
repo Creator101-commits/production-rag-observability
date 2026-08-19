@@ -1,6 +1,8 @@
-<!-- ![Banner](./image.png) -->
-# Production Rag Observability
-> Short blurb about what your product does.
+![Banner](./image.png)
+
+# Production RAG Observability
+
+> A citation-grounded RAG service with stage-level observability over NIST AI RMF documents.
 
 ![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/Creator101-commits/production-rag-observability?include_prereleases)
 ![GitHub last commit](https://img.shields.io/github/last-commit/Creator101-commits/production-rag-observability)
@@ -8,10 +10,11 @@
 ![GitHub pull requests](https://img.shields.io/github/issues-pr/Creator101-commits/production-rag-observability)
 ![GitHub](https://img.shields.io/github/license/Creator101-commits/production-rag-observability)
 
-Brief one to two paragraph statement about your product and what it does.
+This repository contains the plan for a citation-grounded question-answering service over version-pinned NIST AI Risk Management Framework documents. The project will preserve chunk provenance, compare BM25 and dense retrieval paths, validate citations, abstain when evidence is insufficient, and expose stage-level latency, token, cost, and failure telemetry.
 
 ## Table of Contents
-- [Production Rag Observability](#product-name)
+
+- [Production RAG Observability](#production-rag-observability)
 - [Quickstart / Demo](#quickstart--demo)
 - [Installation](#installation)
 - [Usage](#usage)
@@ -36,13 +39,13 @@ Add snippets here that your readers can copy-paste with one click.
 **macOS & Linux**
 
 ```sh
-npm install production-rag-observability --save
+npm install my-module --save
 ```
 
 **Windows**
 
 ```sh
-npm install production-rag-observability --save
+npm install my-module --save
 ```
 
 ## Usage
@@ -51,7 +54,7 @@ npm install production-rag-observability --save
 Explain how to use your project here. Create subsections for different features or workflows so users can find what they need quickly.
 
 ```sh
-production-rag-observability --help
+my-module --help
 ```
 
 ## Development
@@ -84,8 +87,16 @@ Please make sure tests pass and the code is formatted before opening a PR.
 ## Release History
 [(Back to top)](#table-of-contents)
 
+* 0.2.1
+    * CHANGE: Update docs (module code remains unchanged)
+* 0.2.0
+    * CHANGE: Remove `setDefaultXYZ()`
+    * ADD: Add `init()`
+* 0.1.1
+    * FIX: Crash when calling `baz()` (Thanks @GenerousContributorName!)
 * 0.1.0
     * The first proper release
+    * CHANGE: Rename `foo()` to `bar()`
 * 0.0.1
     * Work in progress
 
@@ -97,6 +108,6 @@ Distributed under the MIT License. See [`LICENSE`](./LICENSE) for more informati
 ## Meta
 [(Back to top)](#table-of-contents)
 
-Sreeharsha Kannegundla – [@Creator101-commits](https://github.com/Creator101-commits)
+Sreeharsha Kannegundla – [@YourTwitter](https://twitter.com/YourTwitter) – YourEmail@example.com
 
 Project link: [https://github.com/Creator101-commits/production-rag-observability](https://github.com/Creator101-commits/production-rag-observability)
