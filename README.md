@@ -2,7 +2,7 @@
 
 # Production RAG Observability
 
-> A citation-grounded RAG service with stage-level observability over NIST AI RMF documents.
+> A citation-grounded question-answering service with observable retrieval, reranking, and generation stages.
 
 ![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/Creator101-commits/production-rag-observability?include_prereleases)
 ![GitHub last commit](https://img.shields.io/github/last-commit/Creator101-commits/production-rag-observability)
@@ -10,104 +10,162 @@
 ![GitHub pull requests](https://img.shields.io/github/issues-pr/Creator101-commits/production-rag-observability)
 ![GitHub](https://img.shields.io/github/license/Creator101-commits/production-rag-observability)
 
-This repository contains the plan for a citation-grounded question-answering service over version-pinned NIST AI Risk Management Framework documents. The project will preserve chunk provenance, compare BM25 and dense retrieval paths, validate citations, abstain when evidence is insufficient, and expose stage-level latency, token, cost, and failure telemetry.
+A production-grade Retrieval-Augmented Generation (RAG) microservice grounded on version-pinned NIST AI Risk Management Framework 1.0 (NIST AI 100-1) technical documents. Features token-aware provenance chunking, hybrid BM25 and dense Reciprocal Rank Fusion, cross-encoder reranking, claim-level citation validation, an evidence-based code abstention policy, and stage-level OpenTelemetry-compatible tracing with automatic PII redaction.
 
 ## Table of Contents
 
-- [Production RAG Observability](#production-rag-observability)
-- [Quickstart / Demo](#quickstart--demo)
+- [Features](#features)
+- [Quickstart](#quickstart)
 - [Installation](#installation)
-- [Usage](#usage)
-- [Development](#development)
-- [Contributing](#contributing)
-- [Release History](#release-history)
+- [API Endpoints](#api-endpoints)
+- [CLI Reference](#cli-reference)
+- [Architecture and Observability](#architecture-and-observability)
+- [Development and Testing](#development-and-testing)
 - [License](#license)
-- [Meta](#meta)
 
-## Quickstart / Demo
-[(Back to top)](#table-of-contents)
+## Features
 
-A short demo, screenshot, or GIF that lets the reader see the project in action in under a minute. Link to a hosted demo if you have one.
+- **Token-Aware Provenance Chunking**: Preserves document, page, and section boundaries with stable SHA-256 chunk identifiers and navigation links.
+- **Hybrid Retrieval (RRF)**: Merges Okapi BM25 lexical scores and dense semantic cosine embeddings with Reciprocal Rank Fusion.
+- **Cross-Encoder Reranking**: Re-scores candidate pools with joint query-document phrase alignment and lexical coverage.
+- **Citation Verification**: Parses bracketed citation identifiers in generated text, verifying every citation against retrieved passages and rejecting phantom references.
+- **Code-Level Abstention Policy**: Enforces minimum evidence confidence thresholds, returning structured abstentions on unanswerable or out-of-scope prompts.
+- **Full-Lifecycle Tracing**: Captures per-stage span timings, token consumption, estimated dollar cost, and redacted attributes.
+
+## Quickstart
+
+Run the offline benchmark evaluation across answerable and adversarial prompts:
+
+```bash
+uv run rag-service benchmark
+```
+
+Query the corpus directly from the CLI:
+
+```bash
+uv run rag-service query "What are the core functions of NIST AI RMF?"
+```
 
 ## Installation
-[(Back to top)](#table-of-contents)
 
-> **Note**: For longer README files, a "Back to top" link like the one above makes it easy to navigate.
+Ensure Python 3.12+ and `uv` are installed:
 
-Add snippets here that your readers can copy-paste with one click.
-
-**macOS & Linux**
-
-```sh
-npm install my-module --save
-```
-
-**Windows**
-
-```sh
-npm install my-module --save
-```
-
-## Usage
-[(Back to top)](#table-of-contents)
-
-Explain how to use your project here. Create subsections for different features or workflows so users can find what they need quickly.
-
-```sh
-my-module --help
-```
-
-## Development
-[(Back to top)](#table-of-contents)
-
-Instructions for setting up a local development environment so you can build and run the project from source.
-
-```sh
+```bash
 git clone https://github.com/Creator101-commits/production-rag-observability.git
 cd production-rag-observability
-# install dependencies
-npm install
-# run in development mode
-npm run dev
+uv sync
 ```
 
-## Contributing
-[(Back to top)](#table-of-contents)
+## API Endpoints
 
-Contributions are welcome. To propose a change:
+Launch the HTTP service:
 
-1. Fork it (<https://github.com/Creator101-commits/production-rag-observability/fork>)
-2. Create your feature branch (`git checkout -b feature/fooBar`)
-3. Commit your changes (`git commit -am 'Add some fooBar'`)
-4. Push to the branch (`git push origin feature/fooBar`)
-5. Open a new Pull Request
+```bash
+uv run uvicorn rag_system.api.app:create_app --factory --port 8000
+```
 
-Please make sure tests pass and the code is formatted before opening a PR.
+### 1. Health and Readiness Probes
+```bash
+curl http://localhost:8000/health
+curl http://localhost:8000/ready
+```
 
-## Release History
-[(Back to top)](#table-of-contents)
+### 2. Query Answering
+```bash
+curl -X POST http://localhost:8000/query \
+  -H "Content-Type: application/json" \
+  -d '{"query": "What are the characteristics of trustworthy AI?"}'
+```
 
-* 0.2.1
-    * CHANGE: Update docs (module code remains unchanged)
-* 0.2.0
-    * CHANGE: Remove `setDefaultXYZ()`
-    * ADD: Add `init()`
-* 0.1.1
-    * FIX: Crash when calling `baz()` (Thanks @GenerousContributorName!)
-* 0.1.0
-    * The first proper release
-    * CHANGE: Rename `foo()` to `bar()`
-* 0.0.1
-    * Work in progress
+Response format:
+```json
+{
+  "request_id": "c16d5573-...",
+  "trace_id": "90eb6441-...",
+  "status": "answered",
+  "answer": "Section 2: Characteristics of Trustworthy AI Systems... [nist_ai_rmf_1_0_p12_c0_09a47dd6]",
+  "citations": [
+    {
+      "citation_id": "nist_ai_rmf_1_0_p12_c0_09a47dd6",
+      "document_id": "nist_ai_rmf_1_0",
+      "document_title": "NIST Artificial Intelligence Risk Management Framework (AI RMF 1.0)",
+      "page_start": 12,
+      "page_end": 12,
+      "text_snippet": "Section 2: Characteristics of Trustworthy AI Systems..."
+    }
+  ],
+  "claims": ["..."],
+  "warnings": [],
+  "latency_ms": 14.82
+}
+```
+
+### 3. User Feedback
+```bash
+curl -X POST http://localhost:8000/feedback \
+  -H "Content-Type: application/json" \
+  -d '{"request_id": "c16d5573-...", "rating": 5, "comment": "Precise citation."}'
+```
+
+## CLI Reference
+
+```bash
+# Display package version
+uv run rag-service version
+
+# Run benchmark evaluation suite
+uv run rag-service benchmark
+
+# Query the corpus
+uv run rag-service query "How does GOVERN cultivate risk culture?"
+
+# Generate markdown benchmark report
+uv run rag-service report --output artifacts/rag_benchmark_report.md
+```
+
+## Architecture and Observability
+
+```text
+Versioned NIST PDFs
+       |
+       v
+Chunking (token targets + page provenance)
+       |
+       +------------+------------+
+       |                         |
+       v                         v
+   BM25 Index               Dense Index
+       |                         |
+       +------------+------------+
+                    |
+               RRF Fusion
+                    |
+              Cross-Encoder
+                    |
+            Evidence Threshold
+             /              \
+       (>= threshold)   (< threshold)
+           /                  \
+   Fake Provider           Abstain Policy
+          |                    |
+   Citation Validator          |
+          \                    /
+        Structured Response + Trace
+```
+
+## Development and Testing
+
+```bash
+# Run pytest with branch coverage
+uv run pytest
+
+# Run Ruff linter
+uv run ruff check .
+
+# Run static type checker
+uv run mypy src
+```
 
 ## License
-[(Back to top)](#table-of-contents)
 
-Distributed under the MIT License. See [`LICENSE`](./LICENSE) for more information.
-
-## Meta
-[(Back to top)](#table-of-contents)
-
-Sreeharsha Kannegundla – [@YourTwitter](https://twitter.com/YourTwitter) – YourEmail@example.com
-
-Project link: [https://github.com/Creator101-commits/production-rag-observability](https://github.com/Creator101-commits/production-rag-observability)
+Distributed under the MIT License. See [LICENSE](./LICENSE) for details.

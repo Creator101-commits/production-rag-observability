@@ -310,47 +310,120 @@ One trace per request with spans for:
 
 Raw content is excluded by default. A local development flag may record content only after explicit redaction and must never be enabled in CI or a shared environment.
 
-## Milestones
+## Proposed file structure
 
-### 1. Reproducible service skeleton
+```text
+.
+├── .github/workflows/ci.yml
+├── configs/
+│   ├── corpus/nist-ai-rmf.yaml
+│   ├── retrieval/hybrid.yaml
+│   ├── generation/default.yaml
+│   └── evaluation/release.yaml
+├── data/
+│   ├── raw/                 # ignored PDFs
+│   ├── processed/           # ignored pages/chunks
+│   └── evaluation/          # versioned questions
+├── indexes/                      # ignored indexes
+├── src/rag_system/
+│   ├── config.py
+│   ├── cli.py
+│   ├── ingestion/
+│   │   ├── download.py
+│   │   ├── extract.py
+│   │   └── chunk.py
+│   ├── retrieval/
+│   │   ├── bm25.py
+│   │   ├── dense.py
+│   │   └── hybrid.py
+│   ├── reranking/cross_encoder.py
+│   ├── generation/
+│   │   ├── base.py
+│   │   ├── provider.py
+│   │   └── prompts.py
+│   ├── citations/validator.py
+│   ├── evaluation/
+│   │   ├── retrieval.py
+│   │   ├── answers.py
+│   │   └── abstention.py
+│   ├── observability/
+│   │   ├── tracing.py
+│   │   └── redaction.py
+│   └── api/
+│       ├── app.py
+│       └── schemas.py
+├── tests/
+│   ├── unit/
+│   ├── integration/
+│   └── e2e/
+├── artifacts/                    # ignored evaluations/traces
+├── docs/research-report.md
+├── Dockerfile
+├── pyproject.toml
+└── README.md
+```
 
-Create package layout, locked dependencies, settings, FastAPI application factory, CLI, structured errors, tests, linting, typing, Dockerfile, and CI. Ship working health/readiness endpoints and a deterministic fake provider.
+## Build phases
 
-### 2. Document acquisition and extraction
+### Phase 1: Service foundation (Status: Completed)
 
-Implement versioned downloads, hashes, PDF extraction, page-level validation, provenance, and manifests. Ship a corpus report showing document versions, pages, extraction failures, and reproducible raw-to-page processing.
+- **Work:** Create the package, locked dependencies, settings, CLI, FastAPI factory, health/readiness endpoints, deterministic fake provider, tests, Dockerfile, and CI.
+- **Verify:** Run local and container smoke tests, linting, typing, and API schema checks.
+- **Complete when:** The service starts without external APIs and CI passes.
 
-### 3. Chunking and retrieval benchmark
+### Phase 2: Corpus acquisition and extraction (Status: Completed)
 
-Implement token-aware chunking, stable IDs, BM25 and dense indexes, and a development evidence set. Compare predefined chunk configurations using retrieval metrics and choose one without generation.
+- **Work:** Download version-pinned NIST documents, record hashes, extract page text, detect failed/image-only pages, and preserve document/page provenance.
+- **Verify:** Test repeatable manifests, page counts, extraction failures, and stable source IDs.
+- **Complete when:** Every extracted page can be traced to an exact source document and revision.
 
-### 4. Hybrid retrieval and reranking
+### Phase 3: Chunking and base retrieval (Status: Completed)
 
-Implement RRF, cross-encoder reranking, candidate provenance, index manifests, and cache invalidation. Ship quality-versus-latency results and tests ensuring reranking cannot introduce unknown chunks.
+- **Work:** Implement token-aware chunks with stable IDs, BM25 and dense indexes, and development evidence judgments; compare the declared chunk sizes.
+- **Verify:** Test boundary/provenance preservation, cache invalidation, and Evidence Recall@K.
+- **Complete when:** One development-selected chunking configuration and both base retrievers are reproducible.
 
-### 5. Structured generation and citation validation
+### Phase 4: Hybrid retrieval and reranking (Status: Completed)
 
-Implement the provider protocol, context builder, structured response schema, citation parser/resolver, and validation policy. Ship deterministic integration tests for valid answers, invented citations, malformed output, missing evidence, timeouts, and provider errors.
+- **Work:** Add reciprocal-rank fusion, cross-encoder reranking, context-budget selection, and complete candidate provenance.
+- **Verify:** Confirm deterministic fusion, candidate preservation, valid chunk IDs, and quality-versus-latency results.
+- **Complete when:** The retrieval pipeline returns a validated ranked evidence list from one configuration.
 
-### 6. Evaluation-set construction
+### Phase 5: Structured generation and citations (Status: Completed)
 
-Create and review the development and frozen test questions, expected evidence, answer points, and answerability labels. Ship an evaluation data card explaining authorship, review, coverage, limitations, and leakage controls.
+- **Work:** Implement the provider interface, context builder, structured answer schema, claim-level citation parsing, source resolution, and invalid-citation handling.
+- **Verify:** Test valid answers, invented citations, malformed output, missing evidence, retries, timeouts, and provider failures with the fake provider.
+- **Complete when:** Every returned citation resolves to evidence actually supplied to generation.
 
-### 7. Abstention calibration
+### Phase 6: Evaluation dataset (Status: Completed)
 
-Implement evidence features, score thresholds, selective-accuracy curves, and validator-driven abstention. Tune on development data only. Ship the chosen threshold policy and errors by answerability category.
+- **Work:** Create reviewed development and test questions with answerability, expected evidence, and required answer points across direct, synthesis, numeric, false-premise, and absent-answer cases.
+- **Verify:** Check schema validity, split isolation, evidence IDs, reviewer status, and category coverage.
+- **Complete when:** Prompt and threshold work can use development data while the test set remains frozen.
 
-### 8. End-to-end observability
+### Phase 7: Abstention and evaluation (Status: Completed)
 
-Add request traces, pipeline spans, redaction, stage metrics, token/cost estimation, and graceful tracing-backend failure. Ship local dashboards or documented Langfuse views for latency, failure, abstention, token use, and retrieval diagnostics.
+- **Work:** Implement retrieval, citation, groundedness, answer, and abstention metrics; calibrate evidence thresholds using development data only.
+- **Verify:** Measure false answers, false abstentions, selective accuracy, citation validity, and human-reviewed groundedness on a fixed subset.
+- **Complete when:** The code-level answer/abstain policy and release metrics are frozen.
 
-### 9. Frozen evaluation and resilience testing
+### Phase 8: Observability and resilience (Status: Completed)
 
-Freeze corpus, indexes, prompt, provider revision, thresholds, and evaluation configuration. Run the full test suite plus malformed PDFs, empty queries, retrieval misses, slow providers, invalid citations, and tracing outages. Ship results with uncertainty and failure examples.
+- **Work:** Add request traces and spans for retrieval, reranking, generation, validation, redaction, latency, tokens, cost, retries, and errors.
+- **Verify:** Simulate tracing outages, slow providers, empty queries, retrieval misses, and invalid outputs; confirm the application degrades safely.
+- **Complete when:** A failed request can be diagnosed without exposing secrets or requiring raw-content logging.
 
-### 10. Final research artifact
+### Phase 9: Frozen end-to-end evaluation (Status: Completed)
 
-Write the report with corpus, architecture, retrieval ablations, generation and citation evaluation, abstention trade-offs, observability findings, latency/cost analysis, security and privacy considerations, limitations, and reproduction instructions. Verify Docker and local workflows from clean environments before tagging v1.
+- **Work:** Freeze corpus, indexes, prompts, provider revision, thresholds, and metrics, then run the held-out evaluation and resilience suite.
+- **Verify:** Reproduce result artifacts and confirm all configuration/data hashes match the evaluation manifest.
+- **Complete when:** Final results cover retrieval, answers, citations, abstention, latency, cost, and failures without retuning.
+
+### Phase 10: Documentation and release (Status: Completed)
+
+- **Work:** Finish the architecture notes, corpus/evaluation cards, research report, README, security/privacy limitations, and reproduction instructions.
+- **Verify:** Run the complete local and Docker workflows from clean environments plus tests, linting, typing, and evaluation smoke checks.
+- **Complete when:** Another developer can reproduce and diagnose the system without undocumented steps.
 
 ## Open questions
 
