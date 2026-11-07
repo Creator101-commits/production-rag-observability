@@ -21,13 +21,15 @@ def chunk_page(
     heading: str = "",
 ) -> list[Chunk]:
     """Chunk a single page into overlapping segments with stable provenance."""
+    if chunk_size_tokens <= 0 or not 0 <= chunk_overlap_tokens < chunk_size_tokens:
+        raise ValueError("Require positive chunk size and overlap smaller than chunk size.")
     clean_text = normalize_text(page.text)
-    words = clean_text.split()
-    if not words:
+    tokens = list(re.finditer(r"\w+|[^\w\s]", clean_text))
+    if not tokens:
         return []
 
     # If page fits in one chunk
-    if len(words) <= chunk_size_tokens:
+    if len(tokens) <= chunk_size_tokens:
         chunk_id = Chunk.generate_chunk_id(doc.document_id, page.page_number, 0, clean_text)
         return [
             Chunk(
@@ -47,10 +49,9 @@ def chunk_page(
     idx = 0
     start = 0
 
-    while start < len(words):
-        end = min(len(words), start + chunk_size_tokens)
-        chunk_words = words[start:end]
-        chunk_text = " ".join(chunk_words)
+    while start < len(tokens):
+        end = min(len(tokens), start + chunk_size_tokens)
+        chunk_text = clean_text[tokens[start].start() : tokens[end - 1].end()]
 
         chunk_id = Chunk.generate_chunk_id(doc.document_id, page.page_number, idx, chunk_text)
         chunks.append(
@@ -66,6 +67,8 @@ def chunk_page(
             )
         )
         idx += 1
+        if end == len(tokens):
+            break
         start += step
 
     return chunks

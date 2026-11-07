@@ -1,4 +1,4 @@
-"""Curated NIST AI Risk Management Framework (NIST AI 100-1) corpus."""
+"""NIST-themed teaching paraphrases with local page labels, not verified source excerpts."""
 
 from __future__ import annotations
 
@@ -6,12 +6,12 @@ from rag_system.ingestion.schema import Document, Page
 
 
 def load_nist_ai_rmf_corpus() -> list[Document]:
-    """Load canonical version-pinned NIST AI RMF 1.0 document collection."""
+    """Load hand-written NIST-themed teaching fixtures, not official PDF pages."""
     doc_core = Document(
         document_id="nist_ai_rmf_1_0",
-        title="NIST Artificial Intelligence Risk Management Framework (AI RMF 1.0)",
+        title="AI RMF teaching paraphrases (local page labels)",
         source_url="https://doi.org/10.6028/NIST.AI.100-1",
-        version="1.0-final",
+        version="synthetic-fixture-v1",
         pages=[
             Page(
                 page_number=1,
@@ -98,9 +98,9 @@ def load_nist_ai_rmf_corpus() -> list[Document]:
 
     doc_playbook = Document(
         document_id="nist_ai_rmf_playbook",
-        title="NIST AI RMF Playbook: Practical Guidance for Implementing Trustworthy AI",
+        title="AI RMF Playbook teaching paraphrases (local page labels)",
         source_url="https://airc.nist.gov/AI_RMF_Knowledge_Base/Playbook",
-        version="1.0-companion",
+        version="synthetic-fixture-v1",
         pages=[
             Page(
                 page_number=5,

@@ -1,4 +1,4 @@
-"""Cross-encoder candidate reranking over retrieved evidence pools."""
+"""Lexical coverage reranking (legacy class name retained) over retrieved evidence pools."""
 
 from __future__ import annotations
 
@@ -15,8 +15,54 @@ class CrossEncoderReranker:
         self.model_name = model_name
 
     def score_pair(self, query: str, text: str) -> float:
-        """Compute joint cross-attention relevance score between query and evidence."""
-        q_tokens = set(re.findall(r"[a-z0-9]+", query.lower()))
+        """Compute joint lexical coverage relevance score between query and evidence."""
+        # Boilerplate document names and question words cannot support an answer.
+        stopwords = {
+            "a",
+            "an",
+            "the",
+            "of",
+            "for",
+            "to",
+            "in",
+            "on",
+            "by",
+            "and",
+            "or",
+            "with",
+            "what",
+            "which",
+            "who",
+            "when",
+            "where",
+            "how",
+            "is",
+            "are",
+            "was",
+            "were",
+            "do",
+            "does",
+            "did",
+            "should",
+            "can",
+            "could",
+            "would",
+            "according",
+            "mentioned",
+            "detailed",
+            "explain",
+            "text",
+            "document",
+            "documents",
+            "nist",
+            "ai",
+            "rmf",
+        }
+        q_tokens = {
+            token
+            for token in re.findall(r"[a-z0-9]+", query.lower())
+            if token not in stopwords and not token.isdigit()
+        }
         t_tokens = re.findall(r"[a-z0-9]+", text.lower())
 
         if not q_tokens or not t_tokens:
@@ -31,9 +77,7 @@ class CrossEncoderReranker:
         t_words = text.lower().split()
         q_bigrams = set(zip(q_words[:-1], q_words[1:], strict=False))
         t_bigrams = set(zip(t_words[:-1], t_words[1:], strict=False))
-        bigram_bonus = (
-            len(q_bigrams.intersection(t_bigrams)) / len(q_bigrams) if q_bigrams else 0.0
-        )
+        bigram_bonus = len(q_bigrams.intersection(t_bigrams)) / len(q_bigrams) if q_bigrams else 0.0
 
         raw_score = 0.7 * coverage_score + 0.3 * bigram_bonus
         return float(min(1.0, max(0.0, raw_score)))

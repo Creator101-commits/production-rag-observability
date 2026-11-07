@@ -1,4 +1,4 @@
-"""Dense semantic retriever using normalized vector embeddings."""
+"""Dense hashed lexical retriever using normalized vector embeddings."""
 
 from __future__ import annotations
 
@@ -13,16 +13,18 @@ from rag_system.retrieval.schema import Evidence
 
 
 class DenseRetriever:
-    """Exact cosine dense semantic retriever with normalized feature vectors."""
+    """Exact cosine dense hashed lexical retriever with normalized feature vectors."""
 
     def __init__(self, embedding_dim: int = 128) -> None:
+        if embedding_dim <= 0:
+            raise ValueError("embedding_dim must be positive.")
         self.dim = embedding_dim
         self.chunks: list[Chunk] = []
         self.doc_vectors: np.ndarray | None = None
         self.is_indexed: bool = False
 
     def _embed_text(self, text: str) -> np.ndarray:
-        """Compute deterministic normalized dense semantic embedding vector."""
+        """Compute deterministic normalized dense hashed lexical feature vector."""
         vec = np.zeros(self.dim, dtype=np.float32)
         words = re.findall(r"[a-z0-9]+", text.lower())
         if not words:
@@ -55,6 +57,8 @@ class DenseRetriever:
 
     def retrieve(self, query: str, top_k: int = 10) -> list[Evidence]:
         """Retrieve top evidence chunks using exact cosine similarity."""
+        if top_k <= 0:
+            raise ValueError("Result count must be positive.")
         if not self.is_indexed or self.doc_vectors is None:
             raise RuntimeError("DenseRetriever must be indexed before calling retrieve.")
 

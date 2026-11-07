@@ -97,7 +97,11 @@ class BenchmarkRunner:
                 evidence_score_threshold=self.config.evidence_score_threshold,
             )
             with self.tracer.span(trace, "generation"):
-                gen_resp = self.generator.generate(gen_req)
+                gen_resp = CitationValidator.enforce(
+                    self.generator.generate(gen_req),
+                    top_evidence,
+                    self.config.min_required_citations,
+                )
 
             self.tracer.record_token_usage(
                 trace,

@@ -39,6 +39,8 @@ def compute_abstention_metrics(
 
     Here 'abstain' is positive class when question is unanswerable.
     """
+    if len(y_true_answerable) != len(y_pred_answered):
+        raise ValueError("Answerability labels and predictions must be aligned.")
     total = len(y_true_answerable)
     if total == 0:
         return 0.0, 0.0, 0.0, 0.0
@@ -52,17 +54,20 @@ def compute_abstention_metrics(
 
     # True positive abstentions: unanswerable AND abstained
     tp_abstain = sum(
-        1 for true_ans, pred_abs in zip(y_true_answerable, pred_abstained, strict=False)
+        1
+        for true_ans, pred_abs in zip(y_true_answerable, pred_abstained, strict=False)
         if not true_ans and pred_abs
     )
     # False positive abstention: answerable BUT abstained
     fp_abstain = sum(
-        1 for true_ans, pred_abs in zip(y_true_answerable, pred_abstained, strict=False)
+        1
+        for true_ans, pred_abs in zip(y_true_answerable, pred_abstained, strict=False)
         if true_ans and pred_abs
     )
     # False negative abstention: unanswerable BUT answered (hallucination / false answer)
     fn_abstain = sum(
-        1 for true_ans, pred_ans in zip(y_true_answerable, y_pred_answered, strict=False)
+        1
+        for true_ans, pred_ans in zip(y_true_answerable, y_pred_answered, strict=False)
         if not true_ans and pred_ans
     )
 

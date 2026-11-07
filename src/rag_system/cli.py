@@ -38,9 +38,7 @@ def query(
     config = RAGConfig()
     retriever = HybridRetriever(rrf_k=config.rrf_k)
     reranker = CrossEncoderReranker()
-    generator = DeterministicFakeProvider(
-        default_abstain_threshold=config.evidence_score_threshold
-    )
+    generator = DeterministicFakeProvider(default_abstain_threshold=config.evidence_score_threshold)
 
     docs = load_nist_ai_rmf_corpus()
     chunks = []
@@ -62,7 +60,9 @@ def query(
         evidence_list=top_evidence,
         evidence_score_threshold=config.evidence_score_threshold,
     )
-    gen_resp = generator.generate(gen_req)
+    gen_resp = CitationValidator.enforce(
+        generator.generate(gen_req), top_evidence, config.min_required_citations
+    )
     val_res = CitationValidator.validate(gen_resp.answer, top_evidence)
 
     typer.echo(f"\n--- RAG Answer ({gen_resp.status}) ---")
@@ -114,7 +114,9 @@ def report(
         "# Production RAG with Observability Benchmark Report\n\n"
         "## Executive Summary\n\n"
         "Evaluation results across answerable, synthesis, adversarial, and unanswerable queries "
-        "on the versioned NIST AI Risk Management Framework 1.0 corpus.\n\n"
+        "on hand-written NIST-themed teaching fixtures, not ingested official PDFs. "
+        "Hash vectors and lexical reranking are used; generation is deterministic. "
+        "Token counts and costs are illustrative estimates, not provider billing.\n\n"
         "## Retrieval and Generation Metrics\n\n"
         "| Metric | Result |\n"
         "| :--- | :--- |\n"

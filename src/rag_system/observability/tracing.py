@@ -46,7 +46,7 @@ class RequestTrace:
 
 
 class Tracer:
-    """Lightweight in-memory and local-safe OpenTelemetry-compatible tracer."""
+    """Lightweight in-memory and local-safe tracer without an OpenTelemetry exporter."""
 
     def __init__(
         self,
@@ -106,3 +106,4 @@ class Tracer:
     def finish_trace(self, trace: RequestTrace) -> None:
         """Register completed trace."""
         self.completed_traces.append(trace)
+        del self.completed_traces[:-1000]

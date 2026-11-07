@@ -79,7 +79,7 @@ def create_app(config: RAGConfig | None = None) -> FastAPI:
         """Retrieve evidence, rerank, generate citation-grounded response, and validate."""
         trace = tracer.create_trace(request_id=req.request_id)
 
-        with tracer.span(trace, "request_validation", {"query": req.query}):
+        with tracer.span(trace, "request_validation", {"query_length": len(req.query)}):
             if not req.query.strip():
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -99,7 +99,9 @@ def create_app(config: RAGConfig | None = None) -> FastAPI:
                 temperature=cfg.temperature,
                 evidence_score_threshold=cfg.evidence_score_threshold,
             )
-            gen_resp = generator.generate(gen_req)
+            gen_resp = CitationValidator.enforce(
+                generator.generate(gen_req), top_evidence, cfg.min_required_citations
+            )
 
         tracer.record_token_usage(
             trace,

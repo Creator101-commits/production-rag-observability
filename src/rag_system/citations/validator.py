@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
+from rag_system.generation.base import GenerationResponse
 from rag_system.retrieval.schema import Evidence
 
 
@@ -91,3 +92,25 @@ class CitationValidator:
             unsupported_citation_ids=unsupported,
             warnings=warnings,
         )
+
+    @classmethod
+    def enforce(
+        cls, response: GenerationResponse, evidence: list[Evidence], minimum_citations: int = 1
+    ) -> GenerationResponse:
+        """Fail closed when an answered response has missing or unknown citations.
+
+        ID membership does not establish semantic support for a claim.
+        """
+        result = cls.validate(response.answer, evidence)
+        if response.status == "answered" and (
+            not result.is_valid or len(result.resolved_citations) < minimum_citations
+        ):
+            return replace(
+                response,
+                status="abstained",
+                answer="I cannot answer this question based on the provided technical documents.",
+                citations=[],
+                claims=[],
+                abstention_reason="citation validation failed",
+            )
+        return response

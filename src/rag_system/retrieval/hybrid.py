@@ -14,6 +14,8 @@ class HybridRetriever:
     """Combines BM25 and Dense retrieval ranks via Reciprocal Rank Fusion."""
 
     def __init__(self, rrf_k: float = 60.0) -> None:
+        if rrf_k < 0:
+            raise ValueError("rrf_k must be non-negative.")
         self.rrf_k = rrf_k
         self.bm25 = BM25Retriever()
         self.dense = DenseRetriever()
@@ -35,9 +37,12 @@ class HybridRetriever:
         candidate_depth: int = 20,
     ) -> list[Evidence]:
         """Perform reciprocal rank fusion over BM25 and dense candidate lists."""
+        if top_k <= 0:
+            raise ValueError("Result count must be positive.")
         if not self.is_indexed:
             raise RuntimeError("HybridRetriever must be indexed before calling retrieve.")
 
+        candidate_depth = max(candidate_depth, top_k)
         bm25_candidates = self.bm25.retrieve(query, top_k=candidate_depth)
         dense_candidates = self.dense.retrieve(query, top_k=candidate_depth)
 

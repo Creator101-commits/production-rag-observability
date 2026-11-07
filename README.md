@@ -10,7 +10,7 @@
 ![GitHub pull requests](https://img.shields.io/github/issues-pr/Creator101-commits/production-rag-observability)
 ![GitHub](https://img.shields.io/github/license/Creator101-commits/production-rag-observability)
 
-A production-grade Retrieval-Augmented Generation (RAG) microservice grounded on version-pinned NIST AI Risk Management Framework 1.0 (NIST AI 100-1) technical documents. Features token-aware provenance chunking, hybrid BM25 and dense Reciprocal Rank Fusion, cross-encoder reranking, claim-level citation validation, an evidence-based code abstention policy, and stage-level OpenTelemetry-compatible tracing with automatic PII redaction.
+An offline FastAPI RAG prototype using hand-written NIST-themed teaching paraphrases. It uses BM25 plus deterministic hashed lexical vectors, RRF, lexical coverage reranking, and a deterministic extractive fake generator. It does not ingest official PDFs, run a neural cross-encoder or LLM, or export OpenTelemetry. The fixture page and section labels are local teaching labels, not verified NIST citations. Production deployment, semantic support checking, and hosted generation remain planned.
 
 ## Table of Contents
 
@@ -25,12 +25,12 @@ A production-grade Retrieval-Augmented Generation (RAG) microservice grounded on
 
 ## Features
 
-- **Token-Aware Provenance Chunking**: Preserves document, page, and section boundaries with stable SHA-256 chunk identifiers and navigation links.
-- **Hybrid Retrieval (RRF)**: Merges Okapi BM25 lexical scores and dense semantic cosine embeddings with Reciprocal Rank Fusion.
-- **Cross-Encoder Reranking**: Re-scores candidate pools with joint query-document phrase alignment and lexical coverage.
+- **Approximate Token Chunking**: Preserves fixture document and page boundaries with stable SHA-256 chunk identifiers and navigation links.
+- **Hybrid Retrieval (RRF)**: Merges Okapi BM25 lexical scores and hashed lexical vectors with cosine similarity with Reciprocal Rank Fusion.
+- **Lexical Coverage Reranking**: Re-scores candidate pools with token coverage and bigram alignment; the legacy class name does not load a model.
 - **Citation Verification**: Parses bracketed citation identifiers in generated text, verifying every citation against retrieved passages and rejecting phantom references.
 - **Code-Level Abstention Policy**: Enforces minimum evidence confidence thresholds, returning structured abstentions on unanswerable or out-of-scope prompts.
-- **Full-Lifecycle Tracing**: Captures per-stage span timings, token consumption, estimated dollar cost, and redacted attributes.
+- **In-Memory Tracing**: Captures per-stage span timings, token consumption, illustrative configured token-cost estimates (no provider billing), and redacted attributes.
 
 ## Quickstart
 
@@ -125,33 +125,7 @@ uv run rag-service report --output artifacts/rag_benchmark_report.md
 
 ## Architecture and Observability
 
-```text
-Versioned NIST PDFs
-       |
-       v
-Chunking (token targets + page provenance)
-       |
-       +------------+------------+
-       |                         |
-       v                         v
-   BM25 Index               Dense Index
-       |                         |
-       +------------+------------+
-                    |
-               RRF Fusion
-                    |
-              Cross-Encoder
-                    |
-            Evidence Threshold
-             /              \
-       (>= threshold)   (< threshold)
-           /                  \
-   Fake Provider           Abstain Policy
-          |                    |
-   Citation Validator          |
-          \                    /
-        Structured Response + Trace
-```
+The figure at the top is generated from actual fixture evaluation. The implemented path is approximate-token chunking, lexical/hash retrieval, RRF, lexical reranking, deterministic generation, citation-ID enforcement, and a structured API response. Timing spans are held in memory and capped at 1,000 completed traces.
 
 ## Development and Testing
 
@@ -169,3 +143,11 @@ uv run mypy src
 ## License
 
 Distributed under the MIT License. See [LICENSE](./LICENSE) for details.
+
+## Evaluation limits
+
+`benchmark` uses a small teaching question suite; `image.png` evaluates its seven test questions only. Citation-ID membership verifies references, not semantic entailment or answer correctness. Answers with unknown or missing required citations abstain. Retrieval metrics are document-level, so they do not prove passage relevance. Token counts are approximations and cost estimates are hypothetical. Fixture prose is inspired by [NIST AI RMF](https://www.nist.gov/itl/ai-risk-management-framework); official page-level ingestion and source hashing remain planned.
+
+## Reproducing the figure
+
+`image.png` contains only Matplotlib graphs. Run `PYTHONPATH=src python scripts/render_figure.py` in a Python environment containing the project dependencies and Matplotlib. The plotting environment is separate from the core runtime when Matplotlib is absent. `scripts/figure-data.json` stores the plotted measurements or analytical inputs. Captions distinguish real packaged datasets, synthetic fixtures, analytical calculations, and local timings. No GPU performance is inferred from CPU demonstrations.

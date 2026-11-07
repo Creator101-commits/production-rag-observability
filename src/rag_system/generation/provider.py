@@ -46,7 +46,7 @@ class DeterministicFakeProvider(GenerationProvider):
 
         # Synthesize answers from top valid evidence
         top_ev = valid_evidence[0]
-        summary_sentence = top_ev.text.split(".")[0] + "."
+        summary_sentence = top_ev.text
         citation_id = top_ev.chunk_id
 
         claims = [f"{summary_sentence} [{citation_id}]"]
@@ -54,7 +54,7 @@ class DeterministicFakeProvider(GenerationProvider):
         # If a second piece of evidence is also strong, include it
         if len(valid_evidence) > 1 and valid_evidence[1].score >= threshold:
             second_ev = valid_evidence[1]
-            second_sentence = second_ev.text.split(".")[0] + "."
+            second_sentence = second_ev.text
             claims.append(f"{second_sentence} [{second_ev.chunk_id}]")
 
         answer = " ".join(claims)

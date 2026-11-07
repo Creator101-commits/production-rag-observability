@@ -60,6 +60,8 @@ class BM25Retriever:
 
     def retrieve(self, query: str, top_k: int = 10) -> list[Evidence]:
         """Retrieve top evidence chunks matching lexical query."""
+        if top_k <= 0:
+            raise ValueError("Result count must be positive.")
         if not self.is_indexed:
             raise RuntimeError("BM25Retriever must be indexed before calling retrieve.")
 

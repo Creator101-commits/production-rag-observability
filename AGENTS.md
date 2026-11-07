@@ -5,7 +5,7 @@ A citation-grounded question-answering service over versioned NIST AI Risk Manag
 ## Build commands
 
 ```bash
-# Planned after Milestone 1; not runnable yet.
+# Verification commands.
 uv sync
 uv run pytest
 uv run ruff check .

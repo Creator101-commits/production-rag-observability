@@ -1,0 +1,23 @@
+{
+  "source": "teaching fixtures, test split only; deterministic fake generator",
+  "metrics": {
+    "Doc recall@5": 1.0,
+    "Doc MRR": 1.0,
+    "Citation ID validity": 1.0,
+    "False answer rate": 0.0
+  },
+  "mean_stage_ms": {
+    "retrieval": 0.4119105703596558,
+    "reranking": 0.38658314692189116,
+    "generation": 0.19227985467296094,
+    "citation_validation": 0.0081189999556435
+  },
+  "evidence_scores": [
+    0.4533333333333333,
+    0.27999999999999997,
+    0.27999999999999997,
+    0.27999999999999997,
+    0.0
+  ],
+  "source_sha256": "ff87261a2f082c28ea73808ffb72f990d04c8425152d9e7590dd7a7b239a496a"
+}
