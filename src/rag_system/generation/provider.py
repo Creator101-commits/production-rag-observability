@@ -5,69 +5,78 @@ from __future__ import annotations
 import re
 import time
 
-from rag_system.generation.base import GenerationProvider, GenerationRequest, GenerationResponse
+from rag_system.generation.base import (
+    Claim,
+    GenerationProvider,
+    GenerationRequest,
+    GenerationResponse,
+)
 from rag_system.generation.prompts import build_rag_prompt
+
+ABSTAIN_ANSWER = (
+    "I cannot answer this question based on the provided technical documents."
+)
 
 
 class DeterministicFakeProvider(GenerationProvider):
-    """Deterministic offline generation provider for CI, testing, and benchmark replay."""
+    """Deterministic offline provider for CI, testing, and benchmark replay.
+
+    Emits the structured claim/label contract without any model calls.
+    """
 
     def __init__(self, default_abstain_threshold: float = 0.30) -> None:
         self.default_abstain_threshold = default_abstain_threshold
 
     def generate(self, request: GenerationRequest) -> GenerationResponse:
-        """Generate deterministic citation-grounded response."""
+        """Generate a deterministic structured response from evidence."""
         start_time = time.perf_counter()
 
-        prompt = build_rag_prompt(request.query, request.evidence_list)
+        prompt = build_rag_prompt(
+            request.query, request.evidence_list, max_tokens=request.max_context_tokens
+        )
         prompt_tokens = len(re.findall(r"\w+|[^\w\s]", prompt))
 
-        # Check evidence threshold
         threshold = (
             request.evidence_score_threshold
             if request.evidence_score_threshold is not None
             else self.default_abstain_threshold
         )
 
-        valid_evidence = [ev for ev in request.evidence_list if ev.score >= threshold]
+        valid = [
+            (i, ev)
+            for i, ev in enumerate(request.evidence_list)
+            if ev.score >= threshold
+        ]
 
-        if not valid_evidence:
-            latency_ms = (time.perf_counter() - start_time) * 1000.0
+        latency_ms = (time.perf_counter() - start_time) * 1000.0
+
+        if not valid:
             return GenerationResponse(
-                answer="I cannot answer this question based on the provided technical documents.",
+                answer=ABSTAIN_ANSWER,
                 status="abstained",
-                citations=[],
-                claims=[],
-                abstention_reason="insufficient evidence in retrieved context",
+                abstain=True,
+                abstain_reason="insufficient evidence score",
                 prompt_tokens=prompt_tokens,
                 completion_tokens=15,
                 latency_ms=latency_ms,
             )
 
-        # Synthesize answers from top valid evidence
-        top_ev = valid_evidence[0]
-        summary_sentence = top_ev.text
-        citation_id = top_ev.chunk_id
-
-        claims = [f"{summary_sentence} [{citation_id}]"]
-
-        # If a second piece of evidence is also strong, include it
-        if len(valid_evidence) > 1 and valid_evidence[1].score >= threshold:
-            second_ev = valid_evidence[1]
-            second_sentence = second_ev.text
-            claims.append(f"{second_sentence} [{second_ev.chunk_id}]")
-
-        answer = " ".join(claims)
-        citations = [ev.chunk_id for ev in valid_evidence[: len(claims)]]
-        completion_tokens = len(re.findall(r"\w+|[^\w\s]", answer))
-        latency_ms = (time.perf_counter() - start_time) * 1000.0
+        claims = tuple(
+            Claim(text=ev.text, citation_labels=(f"c{i + 1}",))
+            for i, ev in valid[:2]
+        )
+        # The resolver renders the final answer from claims; leave ``answer``
+        # empty so claim text is not duplicated in the emitted response.
+        answer = ""
+        completion_tokens = sum(
+            len(re.findall(r"\w+|[^\w\s]", claim.text)) for claim in claims
+        )
 
         return GenerationResponse(
             answer=answer,
             status="answered",
-            citations=citations,
             claims=claims,
-            abstention_reason=None,
+            abstain=False,
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
             latency_ms=latency_ms,

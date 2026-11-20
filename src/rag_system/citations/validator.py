@@ -109,8 +109,9 @@ class CitationValidator:
                 response,
                 status="abstained",
                 answer="I cannot answer this question based on the provided technical documents.",
-                citations=[],
-                claims=[],
-                abstention_reason="citation validation failed",
+                claims=(),
+                citations=(),
+                abstain=True,
+                abstain_reason="citation validation failed",
             )
         return response
