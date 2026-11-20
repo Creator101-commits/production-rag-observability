@@ -39,8 +39,8 @@ class RAGConfig:
     redact_pii: bool = True
     export_traces_locally: bool = True
 
-    # Pricing per 1k tokens (USD)
-    input_token_cost_per_1k: float = 0.0015
-    output_token_cost_per_1k: float = 0.0020
+    # Optional per-1k-token prices (USD); unset means no cost is computed.
+    input_token_cost_per_1k: float | None = None
+    output_token_cost_per_1k: float | None = None
 
     extra_metadata: dict[str, str] = field(default_factory=dict)

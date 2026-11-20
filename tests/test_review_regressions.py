@@ -40,9 +40,9 @@ def test_punctuation_tokens_obey_chunk_limit():
 
 
 def test_document_name_boilerplate_cannot_support_unanswerable_questions():
-    from rag_system.evaluation.dataset import load_evaluation_dataset
+    from rag_system.evaluation.dataset import load_eval_questions
     from rag_system.evaluation.runner import BenchmarkRunner
 
-    questions = [q for q in load_evaluation_dataset() if not q.answerable]
+    questions = [q for q in load_eval_questions() if not q.answerable]
     metrics = BenchmarkRunner().run_evaluation(questions)
     assert metrics.false_answer_rate == 0.0

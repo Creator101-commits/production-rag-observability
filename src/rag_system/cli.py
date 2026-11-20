@@ -7,15 +7,15 @@ from pathlib import Path
 import typer
 
 from rag_system import __version__
-from rag_system.citations.validator import CitationValidator
+from rag_system.api.pipeline import RAGPipeline
 from rag_system.config import RAGConfig
-from rag_system.evaluation.dataset import load_evaluation_dataset
+from rag_system.evaluation.dataset import load_eval_questions
 from rag_system.evaluation.runner import BenchmarkRunner
-from rag_system.generation.base import GenerationRequest
 from rag_system.generation.provider import DeterministicFakeProvider
 from rag_system.ingestion.chunk import chunk_document
-from rag_system.ingestion.corpus import load_nist_ai_rmf_corpus
-from rag_system.reranking.cross_encoder import CrossEncoderReranker
+from rag_system.ingestion.corpus import load_offline_fixture_corpus
+from rag_system.observability.tracing import OTelTracer
+from rag_system.reranking.lexical import LexicalOverlapReranker
 from rag_system.retrieval.hybrid import HybridRetriever
 
 app = typer.Typer(
@@ -37,10 +37,10 @@ def query(
     """Query the technical document corpus with citation verification."""
     config = RAGConfig()
     retriever = HybridRetriever(rrf_k=config.rrf_k)
-    reranker = CrossEncoderReranker()
+    reranker = LexicalOverlapReranker()
     generator = DeterministicFakeProvider(default_abstain_threshold=config.evidence_score_threshold)
 
-    docs = load_nist_ai_rmf_corpus()
+    docs = load_offline_fixture_corpus()
     chunks = []
     for doc in docs:
         chunks.extend(
@@ -52,39 +52,35 @@ def query(
         )
     retriever.index(chunks)
 
-    candidates = retriever.retrieve(text, top_k=config.retrieval_candidate_depth)
-    top_evidence, rerank_ms = reranker.rerank(text, candidates, top_k=config.rerank_top_k)
-
-    gen_req = GenerationRequest(
-        query=text,
-        evidence_list=top_evidence,
-        evidence_score_threshold=config.evidence_score_threshold,
+    pipeline = RAGPipeline(
+        retriever=retriever,
+        reranker=reranker,
+        provider=generator,
+        tracer=OTelTracer(service_name="rag_system-cli"),
+        config=config,
     )
-    gen_resp = CitationValidator.enforce(
-        generator.generate(gen_req), top_evidence, config.min_required_citations
-    )
-    val_res = CitationValidator.validate(gen_resp.answer, top_evidence)
+    resp = pipeline.query(text)
 
-    typer.echo(f"\n--- RAG Answer ({gen_resp.status}) ---")
-    typer.echo(gen_resp.answer)
+    typer.echo(f"\n--- RAG Answer ({resp.status}) ---")
+    typer.echo(resp.answer)
 
-    if val_res.resolved_citations:
+    if resp.citations:
         typer.echo("\n--- Citations ---")
-        for c in val_res.resolved_citations:
+        for c in resp.citations:
             typer.echo(f"- [{c.citation_id}] {c.document_title} (p. {c.page_start})")
 
-    if val_res.warnings:
+    if resp.warnings:
         typer.echo("\n--- Validation Warnings ---")
-        for w in val_res.warnings:
+        for w in resp.warnings:
             typer.echo(f"! {w}")
 
-    typer.echo(f"\nRerank Latency: {rerank_ms:.2f} ms | Gen Latency: {gen_resp.latency_ms:.2f} ms")
+    typer.echo(f"\nLatency: {resp.latency_ms:.2f} ms | Trace: {resp.trace_id[:16]}...")
 
 
 @app.command()
 def benchmark() -> None:
     """Run offline evaluation over NIST AI RMF question dataset."""
-    questions = load_evaluation_dataset()
+    questions = load_eval_questions()
     runner = BenchmarkRunner()
     metrics = runner.run_evaluation(questions)
 
@@ -106,7 +102,7 @@ def report(
     output: Path | None = typer.Option(None, "--output", "-o", help="Path to write report."),  # noqa: B008
 ) -> None:
     """Generate markdown evaluation and architecture report."""
-    questions = load_evaluation_dataset()
+    questions = load_eval_questions()
     runner = BenchmarkRunner()
     metrics = runner.run_evaluation(questions)
 
