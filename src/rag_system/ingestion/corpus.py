@@ -1,12 +1,16 @@
-"""NIST-themed teaching paraphrases with local page labels, not verified source excerpts."""
+"""Offline teaching fixture: hand-written NIST-themed paraphrases.
+
+These are local fixtures for tests, CI, and the CPU Docker image. They are
+not official PDF pages and carry no verified page-level provenance.
+"""
 
 from __future__ import annotations
 
 from rag_system.ingestion.schema import Document, Page
 
 
-def load_nist_ai_rmf_corpus() -> list[Document]:
-    """Load hand-written NIST-themed teaching fixtures, not official PDF pages."""
+def load_offline_fixture_corpus() -> list[Document]:
+    """Load the hand-written offline fixture corpus (not official PDF pages)."""
     doc_core = Document(
         document_id="nist_ai_rmf_1_0",
         title="AI RMF teaching paraphrases (local page labels)",
@@ -126,3 +130,7 @@ def load_nist_ai_rmf_corpus() -> list[Document]:
     )
 
     return [doc_core, doc_playbook]
+
+
+# Backwards-compatible name for callers written before the fixture rename.
+load_nist_ai_rmf_corpus = load_offline_fixture_corpus

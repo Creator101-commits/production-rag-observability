@@ -24,6 +24,8 @@ class Document:
     source_url: str
     version: str
     pages: list[Page] = field(default_factory=list)
+    # SHA-256 of the exact source bytes; empty for synthetic fixtures.
+    source_sha256: str = ""
 
     @property
     def total_pages(self) -> int:
