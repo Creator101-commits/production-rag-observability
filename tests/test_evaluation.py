@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-from rag_system.evaluation.dataset import EvalQuestion, load_evaluation_dataset
+from rag_system.evaluation.dataset import (
+    EvalQuestion,
+    EvidenceRef,
+    load_eval_questions,
+)
 from rag_system.evaluation.metrics import (
     compute_abstention_metrics,
     compute_latency_percentiles,
@@ -57,16 +61,20 @@ def test_benchmark_runner() -> None:
             question_id="t1",
             question="What is the GOVERN function in NIST AI RMF?",
             answerable=True,
-            expected_doc_ids=["nist_ai_rmf_1_0"],
+            evidence=(EvidenceRef(document_id="nist_ai_rmf_1_0", pages=(20,)),),
+            required_points=(("GOVERN",),),
             category="direct_lookup",
+            difficulty="easy",
             split="test",
         ),
         EvalQuestion(
             question_id="t2",
             question="What is the price of gold in Mars?",
             answerable=False,
-            expected_doc_ids=[],
+            evidence=(),
+            required_points=(),
             category="unanswerable",
+            difficulty="easy",
             split="test",
         ),
     ]
@@ -80,9 +88,9 @@ def test_benchmark_runner() -> None:
     assert metrics.mean_latency_ms >= 0.0
 
 
-def test_load_evaluation_dataset() -> None:
-    questions = load_evaluation_dataset()
-    assert len(questions) > 5
+def test_load_eval_questions() -> None:
+    questions = load_eval_questions()
+    assert len(questions) == 70
     splits = {q.split for q in questions}
     assert "test" in splits
     assert "dev" in splits
