@@ -1,12 +1,11 @@
-"""Reproduce image.png from actual code outputs; no invented benchmark values.
+"""Render image.png from scripts/figure-data.json.
 
-Requires the project dependencies and an environment with Matplotlib installed.
-Run from the repository root with PYTHONPATH=src python scripts/render_figure.py.
+The data file is generated from curated benchmark results; this script
+contains no metric values of its own.
 """
 
 from __future__ import annotations
 
-import hashlib
 import json
 from pathlib import Path
 
@@ -14,94 +13,110 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
-from rag_system.evaluation.dataset import load_evaluation_dataset
-from rag_system.evaluation.runner import BenchmarkRunner
-from rag_system.reranking.cross_encoder import CrossEncoderReranker
-
 matplotlib.use("Agg")
 
 plt.rcParams.update(
     {
         "font.family": "DejaVu Sans",
-        "font.size": 11,
+        "font.size": 10,
         "axes.spines.top": False,
         "axes.spines.right": False,
         "axes.titleweight": "bold",
         "figure.facecolor": "white",
     }
 )
-COLORS = ["#4169e1", "#10a68b", "#d95f45", "#8659cf", "#64748b"]
+
 ROOT = Path(__file__).resolve().parents[1]
-fig, axes = plt.subplots(1, 3, figsize=(15, 4.8), layout="constrained")
+DATA = json.loads((ROOT / "scripts" / "figure-data.json").read_text())
 
+COLORS = ["#4169e1", "#10a68b", "#d95f45", "#8659cf", "#64748b", "#e8a13c"]
 
-questions = [q for q in load_evaluation_dataset() if q.split == "test"]
-runner = BenchmarkRunner()
-metrics = runner.run_evaluation(questions)
-labels = ["Doc recall@5", "Doc MRR", "Citation ID validity", "False answer rate"]
-values = [
-    metrics.retrieval_recall_at_5,
-    metrics.retrieval_mrr,
-    metrics.citation_validity_rate,
-    metrics.false_answer_rate,
+fig, axes = plt.subplots(1, 3, figsize=(16, 4.6), layout="constrained")
+
+# Panel 1: retrieval ablation nDCG@10 (test, retrieval-only).
+abl = DATA["retrieval_ablations"]
+names = list(abl.keys())
+ndcg = [abl[n]["ndcg_at_10"] for n in names]
+hit5 = [abl[n]["hit_at_5"] for n in names]
+y = np.arange(len(names))
+axes[0].barh(y, ndcg, color=COLORS[0], label="nDCG@10")
+axes[0].barh(y, hit5, color=COLORS[4], alpha=0.55, label="Hit@5")
+axes[0].set_yticks(y, names, fontsize=8)
+axes[0].invert_yaxis()
+axes[0].set_xlabel("score")
+axes[0].set_title("Retrieval ablations (test)")
+axes[0].legend(loc="lower right", fontsize=8)
+axes[0].set_xlim(0, 1.0)
+
+# Panel 2: per-stage latency P50 and P95 from exported spans.
+lat = DATA["latency_by_stage"]
+stage_order = (
+    "retrieval", "fusion", "rerank", "threshold", "generation",
+    "citation_validation", "serialization", "nli_scoring",
+)
+stages = [s for s in stage_order if s in lat]
+x = np.arange(len(stages))
+width = 0.38
+p50 = [lat[s]["p50_ms"] for s in stages]
+p95 = [lat[s]["p95_ms"] for s in stages]
+axes[1].bar(x - width / 2, p50, width, color=COLORS[0], label="P50")
+axes[1].bar(x + width / 2, p95, width, color=COLORS[2], label="P95")
+axes[1].set_xticks(x, stages, rotation=35, ha="right", fontsize=8)
+axes[1].set_ylabel("ms")
+axes[1].set_title("Per-stage latency (from spans)")
+axes[1].legend(fontsize=8)
+
+# Panel 3: headline e2e rates with CI whiskers where available.
+e2e = DATA["e2e"]
+rate_keys = [
+    ("required_point_recall", "Req-point recall"),
+    ("all_points_covered", "All points covered"),
+    ("abstain_f1", "Abstain F1"),
+    ("citation_label_validity", "Citation validity"),
+    ("citation_page_precision", "Citation page prec."),
+    ("citation_hit_rate", "Citation hit rate"),
 ]
-axes[0].bar(range(4), values, color=COLORS[:4])
-axes[0].set(xticks=range(4), xticklabels=labels, ylim=(0, 1.1), title="Measured fixture evaluation")
-axes[0].tick_params(axis="x", rotation=28)
-stages = ["retrieval", "reranking", "generation", "citation_validation"]
-timings = [
-    float(
-        np.mean(
-            [
-                s.duration_ms
-                for t in runner.tracer.completed_traces
-                for s in t.spans
-                if s.name == name
-            ]
-        )
-    )
-    for name in stages
-]
-axes[1].barh(stages, timings, color=COLORS[:4])
-axes[1].invert_yaxis()
-axes[1].set(xlabel="Mean duration (ms), this CPU run", title="In-memory stage timing")
-query = "What is the primary role of the GOVERN core function?"
-candidates = runner.retriever.retrieve(query, top_k=5)
-reranked, _ = CrossEncoderReranker().rerank(query, candidates, top_k=5)
-axes[2].bar(range(len(reranked)), [e.score for e in reranked], color=COLORS[0])
-axes[2].axhline(0.3, ls="--", color=COLORS[2], label="Evidence threshold 0.30")
-axes[2].set(
-    xticks=range(len(reranked)),
-    xticklabels=[f"Rank {e.rank}" for e in reranked],
-    ylim=(0, 1),
-    ylabel="Lexical coverage score",
-    title="GOVERN query: evidence gate",
+means, lows, highs, labels = [], [], [], []
+for key, label in rate_keys:
+    val = e2e.get(key)
+    if isinstance(val, dict):
+        means.append(val["mean"])
+        lows.append(val["mean"] - val["ci_low"])
+        highs.append(val["ci_high"] - val["mean"])
+    elif isinstance(val, (int, float)):
+        means.append(float(val))
+        lows.append(0.0)
+        highs.append(0.0)
+    else:
+        continue
+    labels.append(label)
+nli = e2e.get("nli_claim_support_rate")
+if nli is not None:
+    means.append(float(nli))
+    lows.append(0.0)
+    highs.append(0.0)
+    labels.append("NLI support (est.)")
+y2 = np.arange(len(labels))
+axes[2].barh(y2, means, color=COLORS[1])
+axes[2].errorbar(
+    means,
+    y2,
+    xerr=[lows, highs],
+    fmt="none",
+    ecolor="#1f2937",
+    capsize=3,
+    lw=1.2,
 )
-axes[2].legend(fontsize=9)
-fig.suptitle("RAG observability | deterministic fixture service", fontsize=16)
-fig.supxlabel(
-    "Seven synthetic test questions; teaching paraphrases; hashed retrieval and "
-    "lexical reranking. Citation IDs do not prove claim support.",
-    fontsize=10,
-)
-payload = {
-    "source": "teaching fixtures, test split only; deterministic fake generator",
-    "metrics": dict(zip(labels, values, strict=True)),
-    "mean_stage_ms": dict(zip(stages, timings, strict=True)),
-    "evidence_scores": [e.score for e in reranked],
-}
+axes[2].set_yticks(y2, labels, fontsize=8)
+axes[2].invert_yaxis()
+axes[2].set_xlim(0, 1.05)
+axes[2].set_xlabel("rate")
+axes[2].set_title("End-to-end quality (test)")
 
-source_hash = hashlib.sha256()
-for source_path in sorted((ROOT / "src").rglob("*.py")):
-    source_hash.update(str(source_path.relative_to(ROOT)).encode())
-    source_hash.update(source_path.read_bytes())
-payload["source_sha256"] = source_hash.hexdigest()
-
-for ax in axes:
-    ax.set_axisbelow(True)
-    ax.grid(axis="y", alpha=0.2)
-fig.savefig(ROOT / "image.png", dpi=180, metadata={"Software": "Matplotlib"})
-plt.close(fig)
-(ROOT / "scripts" / "figure-data.json").write_text(
-    json.dumps(payload, indent=2, allow_nan=False) + "\n", encoding="utf-8"
+fig.suptitle(
+    f"NIST RAG benchmark - {DATA.get('source', '')}",
+    fontsize=12,
+    fontweight="bold",
 )
+fig.savefig(ROOT / "image.png", dpi=180, bbox_inches="tight")
+print(f"wrote {ROOT / 'image.png'}")
