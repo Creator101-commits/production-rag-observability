@@ -1,86 +1,33 @@
-"""Lexical coverage reranking (legacy class name retained) over retrieved evidence pools."""
+"""Cross-encoder reranking over retrieved evidence pools."""
 
 from __future__ import annotations
 
-import re
 import time
 
+from rag_system.reranking.scorer import PairScorer
 from rag_system.retrieval.schema import Evidence
 
 
 class CrossEncoderReranker:
-    """Reranks evidence candidate pools using joint query-document relevance scoring."""
+    """Reranks the top candidate pool with a pairwise relevance scorer.
 
-    def __init__(self, model_name: str = "cross-encoder/ms-marco-MiniLM-L-6-v2") -> None:
-        self.model_name = model_name
+    Only the first ``max_candidates`` candidates are scored; the rest keep
+    their retrieval order after the reranked head.
+    """
 
-    def score_pair(self, query: str, text: str) -> float:
-        """Compute joint lexical coverage relevance score between query and evidence."""
-        # Boilerplate document names and question words cannot support an answer.
-        stopwords = {
-            "a",
-            "an",
-            "the",
-            "of",
-            "for",
-            "to",
-            "in",
-            "on",
-            "by",
-            "and",
-            "or",
-            "with",
-            "what",
-            "which",
-            "who",
-            "when",
-            "where",
-            "how",
-            "is",
-            "are",
-            "was",
-            "were",
-            "do",
-            "does",
-            "did",
-            "should",
-            "can",
-            "could",
-            "would",
-            "according",
-            "mentioned",
-            "detailed",
-            "explain",
-            "text",
-            "document",
-            "documents",
-            "nist",
-            "ai",
-            "rmf",
-        }
-        q_tokens = {
-            token
-            for token in re.findall(r"[a-z0-9]+", query.lower())
-            if token not in stopwords and not token.isdigit()
-        }
-        t_tokens = re.findall(r"[a-z0-9]+", text.lower())
+    def __init__(self, scorer: PairScorer, max_candidates: int = 20) -> None:
+        if max_candidates <= 0:
+            raise ValueError("max_candidates must be positive.")
+        self.scorer = scorer
+        self.max_candidates = max_candidates
 
-        if not q_tokens or not t_tokens:
-            return 0.0
+    @property
+    def model_id(self) -> str:
+        return self.scorer.model_id
 
-        # Term coverage
-        matched_terms = sum(1 for tok in q_tokens if tok in t_tokens)
-        coverage_score = matched_terms / len(q_tokens)
-
-        # Bigram phrase alignment bonus
-        q_words = query.lower().split()
-        t_words = text.lower().split()
-        q_bigrams = set(zip(q_words[:-1], q_words[1:], strict=False))
-        t_bigrams = set(zip(t_words[:-1], t_words[1:], strict=False))
-        bigram_bonus = len(q_bigrams.intersection(t_bigrams)) / len(q_bigrams) if q_bigrams else 0.0
-
-        raw_score = 0.7 * coverage_score + 0.3 * bigram_bonus
-        return float(min(1.0, max(0.0, raw_score)))
+    @property
+    def revision(self) -> str:
+        return self.scorer.revision
 
     def rerank(
         self,
@@ -88,20 +35,21 @@ class CrossEncoderReranker:
         candidates: list[Evidence],
         top_k: int = 5,
     ) -> tuple[list[Evidence], float]:
-        """Rerank candidates and return top_k evidence items with elapsed latency in ms."""
+        """Score candidates and return top_k evidence items plus elapsed ms."""
         start_time = time.perf_counter()
 
-        scored_candidates: list[tuple[float, Evidence]] = []
-        for cand in candidates:
-            score = self.score_pair(query, cand.text)
-            scored_candidates.append((score, cand))
+        head = candidates[: self.max_candidates]
+        tail = candidates[self.max_candidates :]
+        scores = self.scorer.score_pairs(query, [c.text for c in head])
 
-        # Sort descending by cross-encoder score, tie-breaking by original rank
-        scored_candidates.sort(key=lambda item: (-item[0], item[1].rank))
+        scored = sorted(
+            zip(head, scores, strict=True),
+            key=lambda item: (-item[1], item[0].rank),
+        )
 
-        reranked_evidence: list[Evidence] = []
-        for r, (score, cand) in enumerate(scored_candidates[:top_k]):
-            reranked_evidence.append(
+        reranked: list[Evidence] = []
+        for r, (cand, score) in enumerate(scored[:top_k]):
+            reranked.append(
                 Evidence(
                     chunk_id=cand.chunk_id,
                     document_id=cand.document_id,
@@ -115,5 +63,11 @@ class CrossEncoderReranker:
                 )
             )
 
+        # Fill remaining slots from the unscored tail, preserving order.
+        for cand in tail:
+            if len(reranked) >= top_k:
+                break
+            reranked.append(cand)
+
         elapsed_ms = (time.perf_counter() - start_time) * 1000.0
-        return reranked_evidence, elapsed_ms
+        return reranked, elapsed_ms
