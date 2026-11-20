@@ -12,8 +12,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.12"
       - name: Install locked dependencies
@@ -24,3 +24,23 @@ jobs:
         run: uv run --locked mypy src
       - name: Run CPU tests
         run: uv run --locked pytest
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build CPU image
+        run: docker build -t rag-system .
+      - name: Smoke test health and query
+        run: |
+          docker run -d --name rag -p 8000:8000 rag-system
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8000/health > /dev/null; then break; fi
+            sleep 2
+          done
+          curl -sf http://localhost:8000/health
+          curl -sf http://localhost:8000/ready
+          curl -sf -X POST http://localhost:8000/query \
+            -H 'Content-Type: application/json' \
+            -d '{"query": "What are the core functions of NIST AI RMF?"}'
+          docker rm -f rag

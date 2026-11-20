@@ -23,7 +23,7 @@ dependencies = [
 [project.optional-dependencies]
 neural = [
     "torch>=2.4",
-    "transformers>=4.44",
+    "transformers>=4.44,<5",
     "accelerate>=0.33",
     "sentence-transformers>=3.0",
     "lm-format-enforcer>=0.11",
