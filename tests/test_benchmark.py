@@ -410,6 +410,57 @@ def test_required_point_found_only_in_claim_text(tmp_path) -> None:
     tracer.shutdown()
 
 
+def test_run_pipeline_question_truncation_source() -> None:
+    """A parse failure at the token cap is classified 'truncated'."""
+
+    class _TruncatingProvider:
+        max_new_tokens = 20
+
+        def generate(self, request: GenerationRequest) -> GenerationResponse:
+            return GenerationResponse(
+                answer="I cannot answer.",
+                status="abstained",
+                abstain=True,
+                abstain_reason="generation parse failure",
+                parse_failure=True,
+                prompt_tokens=10,
+                completion_tokens=20,
+            )
+
+    docs = [_doc()]
+    chunks = []
+    from rag_system.ingestion.chunk_tokens import chunk_document_tokens
+
+    for doc in docs:
+        chunks.extend(
+            chunk_document_tokens(doc, RegexTokenizer(), target_tokens=64)
+        )
+    chunk_map = {c.chunk_id: c for c in chunks}
+    comps = _comps(_TruncatingProvider())
+    retriever = build_retriever(
+        RetrievalSpec(name="bm25", kind="bm25"), chunks, comps
+    )
+    cfg = FrozenConfig(
+        chunk_tokens=64,
+        overlap_ratio=0.15,
+        retrieval=RetrievalSpec(name="bm25", kind="bm25"),
+        rerank="none",
+        abstain_threshold=None,
+    )
+    tracer = OTelTracer(
+        service_name="t", span_exporters=[], enable_otlp=False
+    )
+    q = _question("q_trunc", "test", True, "governance risk management")
+    rec = run_pipeline_question(
+        q, retriever, None, comps.provider, comps, cfg, chunk_map, tracer,
+        abstain_threshold=None, record_nli=False,
+    )
+    assert rec["status"] == "abstained"
+    assert rec["hit_token_cap"] is True
+    assert rec["abstain_source"] == "truncated"
+    tracer.shutdown()
+
+
 def test_aggregate_e2e_metrics_and_stage_table(tmp_path) -> None:
     records = [
         {
@@ -425,6 +476,7 @@ def test_aggregate_e2e_metrics_and_stage_table(tmp_path) -> None:
             "nli_total_claims": 1,
             "prompt_tokens": 10,
             "completion_tokens": 5,
+            "hit_token_cap": True,
         },
         {
             "question_id": "b",
@@ -434,12 +486,15 @@ def test_aggregate_e2e_metrics_and_stage_table(tmp_path) -> None:
             "all_points_covered": False,
             "prompt_tokens": 10,
             "completion_tokens": 5,
+            "hit_token_cap": False,
         },
     ]
     m = aggregate_e2e_metrics(records)
     assert m["abstain_precision"] == pytest.approx(1.0)
     assert m["abstain_recall"] == pytest.approx(1.0)
     assert m["nli_claim_support_rate"] == pytest.approx(1.0)
+    assert m["token_cap_hits"] == 1
+    assert m["truncation_rate"] == pytest.approx(0.5)
 
     traces = tmp_path / "traces.jsonl"
     traces.write_text(

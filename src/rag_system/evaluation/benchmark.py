@@ -473,6 +473,7 @@ def run_pipeline_question(
                 citations=[],
                 prompt_tokens=0,
                 completion_tokens=0,
+                hit_token_cap=False,
                 parse_failure=False,
                 latency_ms=0.0,
                 rerank_ms=rerank_ms,
@@ -518,10 +519,17 @@ def run_pipeline_question(
                 val_span.set_attribute("citation_count", len(val_result.resolved_citations))
                 val_span.set_attribute("valid", val_result.is_valid)
 
+            max_new_tokens = getattr(provider, "max_new_tokens", None)
+            hit_token_cap = bool(
+                max_new_tokens is not None
+                and gen_resp.completion_tokens >= max_new_tokens
+            )
             reason = (gen_resp.abstain_reason or "").lower()
             if gen_resp.status == "abstained":
                 if gen_resp.parse_failure:
-                    abstain_source = "parse_failure"
+                    abstain_source = (
+                        "truncated" if hit_token_cap else "parse_failure"
+                    )
                 elif "citation" in reason or "valid" in reason:
                     abstain_source = "citation_validation"
                 else:
@@ -541,6 +549,7 @@ def run_pipeline_question(
                 citations=list(gen_resp.citations),
                 prompt_tokens=gen_resp.prompt_tokens,
                 completion_tokens=gen_resp.completion_tokens,
+                hit_token_cap=hit_token_cap,
                 parse_failure=gen_resp.parse_failure,
                 latency_ms=gen_resp.latency_ms,
                 rerank_ms=rerank_ms,
@@ -754,6 +763,15 @@ def aggregate_e2e_metrics(
             completion_tokens / len(records) if records else 0.0
         ),
         "parse_failures": sum(1 for r in records if r.get("parse_failure")),
+        "token_cap_hits": sum(
+            1 for r in records if r.get("hit_token_cap")
+        ),
+        "truncation_rate": (
+            sum(1 for r in records if r.get("hit_token_cap"))
+            / len(records)
+            if records
+            else 0.0
+        ),
     }
 
 
@@ -843,6 +861,8 @@ def render_report(result: dict[str, Any]) -> str:
         f"{(e2e.get('nli_whole_chunk_support_rate') or 0.0) * 100:.1f}% |",
         f"| Abstentions by source | {e2e.get('abstention_sources', {})} |",
         f"| Parse failures | {e2e['parse_failures']} |",
+        f"| Truncation rate | {e2e['truncation_rate'] * 100:.1f}% "
+        f"({e2e['token_cap_hits']}/{e2e['num_questions']} hit cap) |",
         f"| Prompt tokens total | {e2e['prompt_tokens_total']} |",
         f"| Completion tokens total | {e2e['completion_tokens_total']} |",
         f"| GPU-seconds | {metrics['gpu_seconds']:.2f} |",
@@ -862,8 +882,9 @@ def render_report(result: dict[str, Any]) -> str:
         "",
         "## Generator x context ablation (test)",
         "",
-        "| Candidate | Req-point recall | Abstain F1 | False-abstain | Parse failures |",
-        "| :--- | ---: | ---: | ---: | ---: |",
+        "| Candidate | Req-point recall | Abstain F1 | False-abstain | "
+        "Parse failures | Truncation |",
+        "| :--- | ---: | ---: | ---: | ---: | ---: |",
     ]
     frozen_key = f"{frozen['provider']}__k{frozen['evidence_top_k']}"
     for name, ev in sorted(metrics.get("generator_ablations_test", {}).items()):
@@ -872,7 +893,7 @@ def render_report(result: dict[str, Any]) -> str:
             f"| {name}{tag} | "
             f"{(ev['required_point_recall']['mean']):.3f} | "
             f"{ev['abstain_f1']:.3f} | {ev['false_abstain_rate']:.3f} | "
-            f"{ev['parse_failures']} |"
+            f"{ev['parse_failures']} | {ev.get('truncation_rate', 0.0):.3f} |"
         )
     lines += [
         "",
@@ -1749,6 +1770,8 @@ def run_full_benchmark(
                         "false_abstain_rate"
                     ],
                     "test_parse_failures": g["test_eval"]["parse_failures"],
+                    "dev_truncation_rate": g["dev_eval"]["truncation_rate"],
+                    "test_truncation_rate": g["test_eval"]["truncation_rate"],
                 }
                 for g in gen_candidates
             ],

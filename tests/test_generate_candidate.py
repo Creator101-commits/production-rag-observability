@@ -7,6 +7,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+from rag_system.generation.base import GenerationResponse
+from rag_system.observability.tracing import OTelTracer
+
 
 def _write_inputs(tmp_path: Path) -> tuple[Path, Path, Path]:
     contexts = {
@@ -161,3 +164,93 @@ def test_generate_candidate_k_ctx_filter_writes_only_that_size(
     assert (out_dir / "fake-candidate__k5__dev.jsonl").is_file()
     assert (out_dir / "fake-candidate__k5__test.jsonl").is_file()
     assert not (out_dir / "fake-candidate__k3__dev.jsonl").exists()
+
+
+class _ParseFailingProvider:
+    """Always returns a parse-failure abstention with fixed token counts."""
+
+    def __init__(self, completion_tokens: int) -> None:
+        self.completion_tokens = completion_tokens
+
+    def generate(self, request: object) -> GenerationResponse:
+        return GenerationResponse(
+            answer="I cannot answer.",
+            status="abstained",
+            abstain=True,
+            abstain_reason="generation parse failure",
+            parse_failure=True,
+            prompt_tokens=10,
+            completion_tokens=self.completion_tokens,
+        )
+
+
+def _one_question() -> dict[str, object]:
+    return {
+        "question_id": "q1",
+        "split": "test",
+        "category": "cat",
+        "difficulty": "easy",
+        "answerable": True,
+        "question": "What does the document say?",
+        "top_score": 0.9,
+        "evidence": [
+            {
+                "chunk_id": "c1",
+                "document_id": "doc_a",
+                "document_title": "Doc A",
+                "page_start": 1,
+                "page_end": 2,
+                "text": "Governance of AI risk is documented here.",
+                "score": 0.9,
+                "rank": 1,
+                "retriever_name": "hybrid",
+            }
+        ],
+    }
+
+
+def test_generate_records_truncation_accounting() -> None:
+    """Cap-hit parse failures are 'truncated', others stay 'parse_failure'."""
+    from rag_system.evaluation.generate_candidate import _generate_records
+
+    tracer = OTelTracer(
+        service_name="t", span_exporters=[], enable_otlp=False
+    )
+    try:
+        at_cap = list(
+            _generate_records(
+                _ParseFailingProvider(20),
+                [_one_question()],
+                3,
+                tracer,
+                max_new_tokens=20,
+            )
+        )
+        assert at_cap[0]["hit_token_cap"] is True
+        assert at_cap[0]["abstain_source"] == "truncated"
+        assert at_cap[0]["parse_failure"] is True
+
+        below_cap = list(
+            _generate_records(
+                _ParseFailingProvider(19),
+                [_one_question()],
+                3,
+                tracer,
+                max_new_tokens=20,
+            )
+        )
+        assert below_cap[0]["hit_token_cap"] is False
+        assert below_cap[0]["abstain_source"] == "parse_failure"
+
+        no_cap = list(
+            _generate_records(
+                _ParseFailingProvider(10_000),
+                [_one_question()],
+                3,
+                tracer,
+            )
+        )
+        assert no_cap[0]["hit_token_cap"] is False
+        assert no_cap[0]["abstain_source"] == "parse_failure"
+    finally:
+        tracer.shutdown()

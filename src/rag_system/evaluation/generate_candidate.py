@@ -110,6 +110,7 @@ def _generate_records(
     *,
     temperature: float = 0.0,
     max_context_tokens: int = 2048,
+    max_new_tokens: int | None = None,
 ) -> Iterator[dict[str, Any]]:
     """Run generation for every serialized question at one context size."""
     for q in questions:
@@ -154,10 +155,16 @@ def _generate_records(
             gen_span.set_attribute(
                 "completion_tokens", gen_resp.completion_tokens
             )
+        hit_token_cap = bool(
+            max_new_tokens is not None
+            and gen_resp.completion_tokens >= max_new_tokens
+        )
         reason = (gen_resp.abstain_reason or "").lower()
         if gen_resp.status == "abstained":
             if gen_resp.parse_failure:
-                abstain_source = "parse_failure"
+                abstain_source = (
+                    "truncated" if hit_token_cap else "parse_failure"
+                )
             elif "citation" in reason or "valid" in reason:
                 abstain_source = "citation_validation"
             else:
@@ -177,6 +184,7 @@ def _generate_records(
             citations=list(gen_resp.citations),
             prompt_tokens=gen_resp.prompt_tokens,
             completion_tokens=gen_resp.completion_tokens,
+            hit_token_cap=hit_token_cap,
             parse_failure=gen_resp.parse_failure,
             latency_ms=gen_resp.latency_ms,
             citation_label_validity=(
@@ -200,6 +208,15 @@ def run_candidate(
     contexts = json.loads(contexts_path.read_text(encoding="utf-8"))
     spec = json.loads(spec_path.read_text(encoding="utf-8"))
     name = spec["name"]
+    max_new_tokens = spec.get("max_new_tokens")
+    if max_new_tokens is None and spec.get("kind", "hf") == "hf":
+        from rag_system.generation.hf_local import (  # noqa: PLC0415
+            DEFAULT_MAX_NEW_TOKENS,
+        )
+
+        max_new_tokens = DEFAULT_MAX_NEW_TOKENS
+    if max_new_tokens is not None:
+        max_new_tokens = int(max_new_tokens)
     k_ctxs = (
         [k_ctx]
         if k_ctx is not None
@@ -229,6 +246,7 @@ def run_candidate(
                         max_context_tokens=int(
                             contexts.get("max_context_tokens", 2048)
                         ),
+                        max_new_tokens=max_new_tokens,
                     ),
                     start=1,
                 ):
