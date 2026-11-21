@@ -9,7 +9,7 @@ REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "$REPO_ROOT"
 
 KAGGLE_BIN="${KAGGLE_BIN:-$HOME/.local/bin/kaggle}"
-META="kaggle/kernel-metadata.json"
+META="${KAGGLE_META:-kaggle/kernel-metadata.json}"
 KERNEL_ID="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["id"])' "$META")"
 SRC_DATASET="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["dataset_sources"][0])' "$META")"
 SRC_TITLE="$(basename "$SRC_DATASET")"
@@ -62,7 +62,8 @@ fi
 sleep 300
 
 echo "pushing kernel $KERNEL_ID"
-"$KAGGLE_BIN" kernels push -p kaggle
+PUSH_DIR="$(dirname "$META")"
+"$KAGGLE_BIN" kernels push -p "$PUSH_DIR"
 
 # Poll kernel status until a terminal state; bounded by the loop count.
 TERMINAL=""
