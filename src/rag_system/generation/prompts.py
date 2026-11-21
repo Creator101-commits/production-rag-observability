@@ -22,7 +22,8 @@ STRUCTURED_OUTPUT_INSTRUCTION = """Respond with a single JSON object and nothing
 {"answer": string, "claims": [{"text": string, "citations": [string]}],
  "abstain": boolean, "reason": string|null}
 Rules:
-- "answer" is a one-sentence summary; detailed statements go in "claims".
+- "answer" is at most two sentences; detailed statements go in "claims".
+- Provide at most 4 claims, and make each claim one sentence.
 - Every claim must cite at least one evidence label like "c1".
 - If the evidence cannot support an answer, set "abstain" to true, give a
   short "reason", and leave "claims" empty. Never write a plain-text refusal.

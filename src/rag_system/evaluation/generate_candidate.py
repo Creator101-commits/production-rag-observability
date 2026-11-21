@@ -33,12 +33,17 @@ def _build_provider(spec: dict[str, Any]) -> Any:
 
         return DeterministicFakeProvider()
     if kind == "hf":
-        from rag_system.generation.hf_local import HFLocalProvider  # noqa: PLC0415
+        from rag_system.generation.hf_local import (  # noqa: PLC0415
+            DEFAULT_MAX_NEW_TOKENS,
+            HFLocalProvider,
+        )
 
         return HFLocalProvider(
             model_id=spec["model_id"],
             revision=spec.get("revision"),
-            max_new_tokens=int(spec.get("max_new_tokens", 384)),
+            max_new_tokens=int(
+                spec.get("max_new_tokens", DEFAULT_MAX_NEW_TOKENS)
+            ),
             seed=int(spec.get("seed", 42)),
             quantization=spec.get("quantization"),
         )

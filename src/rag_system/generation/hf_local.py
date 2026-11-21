@@ -21,20 +21,23 @@ from rag_system.generation.prompts import SYSTEM_PROMPT, build_structured_prompt
 from rag_system.generation.provider import ABSTAIN_ANSWER
 
 DEFAULT_MODEL_ID = "Qwen/Qwen2.5-3B-Instruct"
-DEFAULT_MAX_NEW_TOKENS = 384
+DEFAULT_MAX_NEW_TOKENS = 768
 
 OUTPUT_SCHEMA: dict[str, object] = {
     "type": "object",
     "properties": {
-        "answer": {"type": "string"},
+        "answer": {"type": "string", "maxLength": 300},
         "claims": {
             "type": "array",
+            "maxItems": 4,
             "items": {
                 "type": "object",
                 "properties": {
-                    "text": {"type": "string"},
+                    "text": {"type": "string", "maxLength": 300},
                     "citations": {
                         "type": "array",
+                        "minItems": 1,
+                        "maxItems": 3,
                         "items": {"type": "string"},
                     },
                 },
@@ -42,7 +45,7 @@ OUTPUT_SCHEMA: dict[str, object] = {
             },
         },
         "abstain": {"type": "boolean"},
-        "reason": {"type": ["string", "null"]},
+        "reason": {"type": ["string", "null"], "maxLength": 160},
     },
     "required": ["answer", "claims", "abstain", "reason"],
 }

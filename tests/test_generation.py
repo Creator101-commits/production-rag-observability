@@ -8,6 +8,7 @@ import pytest
 
 from rag_system.generation.base import Claim, GenerationRequest, GenerationResponse
 from rag_system.generation.hf_local import (
+    OUTPUT_SCHEMA,
     HFLocalProvider,
     parse_structured_output,
 )
@@ -58,6 +59,8 @@ def test_build_labeled_context_and_structured_prompt() -> None:
     # The JSON contract lives in the system prompt, not the user turn.
     assert '"abstain"' in SYSTEM_PROMPT
     assert "I cannot answer this question" not in SYSTEM_PROMPT
+    assert "at most two sentences" in SYSTEM_PROMPT
+    assert "at most 4 claims" in SYSTEM_PROMPT
     assert "[c1]" in prompt
     assert "What is this?" in prompt
 
@@ -187,6 +190,46 @@ def test_hf_local_provider_parse_failure_abstains() -> None:
     assert resp.status == "abstained"
     assert resp.parse_failure is True
     assert "cannot answer" in resp.answer.lower()
+
+
+def test_output_schema_string_and_array_limits_enforced() -> None:
+    """JsonSchemaParser must reject output beyond OUTPUT_SCHEMA limits.
+
+    lm-format-enforcer is a neural-extra dependency, so this test skips in
+    the base environment; it runs wherever the extra is installed.
+    """
+    lmfe = pytest.importorskip("lmformatenforcer")
+
+    def feed(parser: object, text: str) -> object:
+        for ch in text:
+            parser = parser.add_character(ch)  # type: ignore[attr-defined]
+        return parser
+
+    # answer maxLength=300: the 301st content character is not allowed.
+    parser = lmfe.JsonSchemaParser(OUTPUT_SCHEMA)
+    parser = feed(parser, '{"answer":"' + "a" * 300)
+    allowed = parser.get_allowed_characters()
+    assert '"' in allowed
+    assert "a" not in allowed
+
+    # claims maxItems=4: a fifth item (comma) is not allowed.
+    item = '{"text":"t","citations":["c1"]}'
+    parser = lmfe.JsonSchemaParser(OUTPUT_SCHEMA)
+    parser = feed(
+        parser,
+        '{"answer":"a","claims":[' + ",".join([item] * 4),
+    )
+    allowed = parser.get_allowed_characters()
+    assert "]" in allowed
+    assert "," not in allowed
+
+    # citations minItems=1: an empty citations array is not allowed.
+    parser = lmfe.JsonSchemaParser(OUTPUT_SCHEMA)
+    parser = feed(
+        parser, '{"answer":"a","claims":[{"text":"t","citations":['
+    )
+    allowed = parser.get_allowed_characters()
+    assert "]" not in allowed
 
 
 def test_hf_local_provider_model_abstain() -> None:
