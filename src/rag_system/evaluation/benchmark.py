@@ -1503,8 +1503,36 @@ def run_full_benchmark(
 
     # 3. Rerank selection on dev.
     best_rerank, rerank_table = tune_rerank(chunks, dev_qs, comps, best_spec)
+    retriever = build_retriever(best_spec, chunks, comps)
 
-    # 4. Generator x context-size candidates. Serializable provider specs
+    # 4. Test retrieval-only ablations for every retrieval system. These run
+    #    before generation because the staged path unloads the encoder and
+    #    pair scorer for the provider subprocesses.
+    retrieval_ablations: dict[str, Any] = {}
+    for spec in retrieval_grid():
+        if spec.kind != "bm25" and comps.encoder is None:
+            continue
+        ret = build_retriever(spec, chunks, comps)
+        scores, _ = eval_retrieval(ret, test_qs, chunks)
+        retrieval_ablations[spec.name] = mean_retrieval_scores(scores)
+    # Best retrieval system with each rerank option.
+    for option in ("none", "cross_encoder"):
+        rr = (
+            CrossEncoderReranker(comps.pair_scorer, max_candidates=RERANK_DEPTH)
+            if option == "cross_encoder" and comps.pair_scorer is not None
+            else None
+        )
+        rows: list[RetrievalScores] = []
+        for q in test_qs:
+            if not q.answerable:
+                continue
+            cands = retriever.retrieve(q.question, top_k=CANDIDATE_DEPTH)
+            ranked, _ = rerank_candidates(cands, q.question, rr, RETRIEVAL_TOP_K)
+            relevant = {c.chunk_id for c in chunks if chunk_is_relevant(c, q)}
+            rows.append(retrieval_scores([e.chunk_id for e in ranked], relevant))
+        retrieval_ablations[f"{best_spec.name}+rerank-{option}"] = mean_retrieval_scores(rows)
+
+    # 5. Generator x context-size candidates. Serializable provider specs
     #    select the staged pipeline (one subprocess per provider); without
     #    them the single provider runs in-process as before.
     k_ctxs = comps.k_ctx_candidates or (EVIDENCE_TOP_K,)
@@ -1514,7 +1542,6 @@ def run_full_benchmark(
             comps, k_ctxs, out_dir, tracer,
         )
     else:
-        retriever = build_retriever(best_spec, chunks, comps)
         reranker = (
             CrossEncoderReranker(comps.pair_scorer, max_candidates=RERANK_DEPTH)
             if best_rerank == "cross_encoder" and comps.pair_scorer is not None
@@ -1551,7 +1578,7 @@ def run_full_benchmark(
                     )
                     for q in dev_qs
                 ]
-                # 5. Abstention threshold on dev only, per candidate.
+                # Abstention threshold on dev only, per candidate.
                 threshold_k, obj_k, _table_k = tune_abstention(dev_recs)
                 dev_applied = _apply_threshold_to_records(dev_recs, threshold_k)
                 dev_eval = aggregate_e2e_metrics(dev_applied)
@@ -1635,32 +1662,7 @@ def run_full_benchmark(
     test_records = best_gen["test_records"]
     e2e_metrics = best_gen["test_eval"]
 
-    # 6. Test retrieval-only ablations for every retrieval system.
-    retrieval_ablations: dict[str, Any] = {}
-    for spec in retrieval_grid():
-        if spec.kind != "bm25" and comps.encoder is None:
-            continue
-        ret = build_retriever(spec, chunks, comps)
-        scores, _ = eval_retrieval(ret, test_qs, chunks)
-        retrieval_ablations[spec.name] = mean_retrieval_scores(scores)
-    # Best retrieval system with each rerank option.
-    for option in ("none", "cross_encoder"):
-        rr = (
-            CrossEncoderReranker(comps.pair_scorer, max_candidates=RERANK_DEPTH)
-            if option == "cross_encoder" and comps.pair_scorer is not None
-            else None
-        )
-        rows: list[RetrievalScores] = []
-        for q in test_qs:
-            if not q.answerable:
-                continue
-            cands = retriever.retrieve(q.question, top_k=CANDIDATE_DEPTH)
-            ranked, _ = rerank_candidates(cands, q.question, rr, RETRIEVAL_TOP_K)
-            relevant = {c.chunk_id for c in chunks if chunk_is_relevant(c, q)}
-            rows.append(retrieval_scores([e.chunk_id for e in ranked], relevant))
-        retrieval_ablations[f"{best_spec.name}+rerank-{option}"] = mean_retrieval_scores(rows)
-
-    # 7. Metrics, latency table, GPU seconds from exported spans.
+    # 6. Metrics, latency table, GPU seconds from exported spans.
     traces_path = out_dir / "traces.jsonl"
     latency_table = stage_latency_table(traces_path)
     gpu_sec = gpu_seconds_from_spans(traces_path)

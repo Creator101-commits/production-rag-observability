@@ -472,3 +472,39 @@ def test_run_full_benchmark_writes_artifacts(tmp_path) -> None:
     assert manifest["frozen_config"]["chunk_tokens"] in (256, 512, 768)
     e2e = result["metrics"]["e2e_test"]
     assert e2e["num_questions"] == 2
+
+
+def test_run_full_benchmark_staged_path_keeps_retrieval_ablations(
+    tmp_path,
+) -> None:
+    """Staged generation must not lose the test retrieval ablations."""
+    docs = [_doc(), _doc("doc_b", pages=2)]
+    questions = [
+        _question("d1", "dev", True, "governance risk management"),
+        _question("d2", "dev", False, "unanswerable-marker question"),
+        _question("t1", "test", True, "governance risk management"),
+        _question("t2", "test", False, "unanswerable-marker question"),
+    ]
+    staged_comps = _comps()
+    staged_comps.provider_specs = {"fake": {"kind": "fake"}}
+    staged_out = tmp_path / "staged"
+    staged = run_full_benchmark(
+        docs, {"documents": []}, questions, staged_comps, staged_out
+    )
+    assert (staged_out / "metrics.json").is_file()
+    assert (staged_out / "manifest.json").is_file()
+
+    proc_out = tmp_path / "proc"
+    proc = run_full_benchmark(
+        docs, {"documents": []}, questions, _comps(), proc_out
+    )
+
+    staged_abl = staged["metrics"]["retrieval_ablations_test"]
+    proc_abl = proc["metrics"]["retrieval_ablations_test"]
+    assert set(staged_abl) == set(proc_abl)
+    best_name = staged["manifest"]["frozen_config"]["retrieval"]["name"]
+    assert f"{best_name}+rerank-none" in staged_abl
+    assert f"{best_name}+rerank-cross_encoder" in staged_abl
+    assert any(
+        name != "bm25" and "+rerank-" not in name for name in staged_abl
+    )
