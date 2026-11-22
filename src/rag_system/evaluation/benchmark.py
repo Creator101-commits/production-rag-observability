@@ -41,6 +41,7 @@ from rag_system.evaluation.relevance import (
     mean_retrieval_scores,
     retrieval_scores,
 )
+from rag_system.evaluation.schema_guard import count_schema_bound_violations
 from rag_system.generation.base import GenerationRequest
 from rag_system.generation.resolve import resolve_generation_response
 from rag_system.ingestion.chunk_tokens import chunk_document_tokens
@@ -861,6 +862,7 @@ def render_report(result: dict[str, Any]) -> str:
         f"{(e2e.get('nli_whole_chunk_support_rate') or 0.0) * 100:.1f}% |",
         f"| Abstentions by source | {e2e.get('abstention_sources', {})} |",
         f"| Parse failures | {e2e['parse_failures']} |",
+        f"| Schema bound violations | {e2e.get('schema_bound_violations', 0)} |",
         f"| Truncation rate | {e2e['truncation_rate'] * 100:.1f}% "
         f"({e2e['token_cap_hits']}/{e2e['num_questions']} hit cap) |",
         f"| Prompt tokens total | {e2e['prompt_tokens_total']} |",
@@ -883,8 +885,8 @@ def render_report(result: dict[str, Any]) -> str:
         "## Generator x context ablation (test)",
         "",
         "| Candidate | Req-point recall | Abstain F1 | False-abstain | "
-        "Parse failures | Truncation |",
-        "| :--- | ---: | ---: | ---: | ---: | ---: |",
+        "Parse failures | Truncation | Schema violations |",
+        "| :--- | ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
     frozen_key = f"{frozen['provider']}__k{frozen['evidence_top_k']}"
     for name, ev in sorted(metrics.get("generator_ablations_test", {}).items()):
@@ -893,7 +895,8 @@ def render_report(result: dict[str, Any]) -> str:
             f"| {name}{tag} | "
             f"{(ev['required_point_recall']['mean']):.3f} | "
             f"{ev['abstain_f1']:.3f} | {ev['false_abstain_rate']:.3f} | "
-            f"{ev['parse_failures']} | {ev.get('truncation_rate', 0.0):.3f} |"
+            f"{ev['parse_failures']} | {ev.get('truncation_rate', 0.0):.3f} | "
+            f"{ev.get('schema_bound_violations', 0)} |"
         )
     lines += [
         "",
@@ -1476,6 +1479,12 @@ def _staged_generate_candidates(
                     "test_eval": test_eval,
                     "test_records": test_applied,
                     "dev_records": dev_applied,
+                    "schema_bound_violations_dev": (
+                        count_schema_bound_violations(dev_raw)
+                    ),
+                    "schema_bound_violations_test": (
+                        count_schema_bound_violations(test_raw)
+                    ),
                 }
             )
             raw_by_key[(pname, k_ctx, "dev")] = dev_raw
@@ -1643,6 +1652,12 @@ def run_full_benchmark(
                         "test_eval": aggregate_e2e_metrics(test_recs),
                         "test_records": test_recs,
                         "dev_records": dev_recs,
+                        "schema_bound_violations_dev": (
+                            count_schema_bound_violations(dev_recs)
+                        ),
+                        "schema_bound_violations_test": (
+                            count_schema_bound_violations(test_recs)
+                        ),
                     }
                 )
             del provider
@@ -1681,7 +1696,10 @@ def run_full_benchmark(
     )
     dev_records = best_gen["dev_records"]
     test_records = best_gen["test_records"]
-    e2e_metrics = best_gen["test_eval"]
+    e2e_metrics = dict(best_gen["test_eval"])
+    e2e_metrics["schema_bound_violations"] = best_gen[
+        "schema_bound_violations_test"
+    ]
 
     # 6. Metrics, latency table, GPU seconds from exported spans.
     traces_path = out_dir / "traces.jsonl"
@@ -1691,8 +1709,19 @@ def run_full_benchmark(
     metrics = {
         "e2e_test": e2e_metrics,
         "generator_ablations_test": {
-            f"{g['provider']}__k{g['k_ctx']}": g["test_eval"]
+            f"{g['provider']}__k{g['k_ctx']}": {
+                **g["test_eval"],
+                "schema_bound_violations": g[
+                    "schema_bound_violations_test"
+                ],
+            }
             for g in gen_candidates
+        },
+        "schema_bound_violations": {
+            "dev": sum(g["schema_bound_violations_dev"] for g in gen_candidates),
+            "test": sum(
+                g["schema_bound_violations_test"] for g in gen_candidates
+            ),
         },
         "retrieval_ablations_test": retrieval_ablations,
         "latency_by_stage": latency_table,
@@ -1772,6 +1801,12 @@ def run_full_benchmark(
                     "test_parse_failures": g["test_eval"]["parse_failures"],
                     "dev_truncation_rate": g["dev_eval"]["truncation_rate"],
                     "test_truncation_rate": g["test_eval"]["truncation_rate"],
+                    "schema_bound_violations_dev": g[
+                        "schema_bound_violations_dev"
+                    ],
+                    "schema_bound_violations_test": g[
+                        "schema_bound_violations_test"
+                    ],
                 }
                 for g in gen_candidates
             ],

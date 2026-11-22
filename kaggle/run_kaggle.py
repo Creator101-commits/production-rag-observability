@@ -212,6 +212,15 @@ def main() -> None:
         git_sha=sha,
     )
 
+    violations = result["metrics"].get("schema_bound_violations", {})
+    if smoke and (violations.get("dev", 0) + violations.get("test", 0)) > 0:
+        raise SystemExit(
+            f"schema bound violations detected: {violations}; "
+            "constrained decoding is not enforcing OUTPUT_SCHEMA"
+        )
+    if violations:
+        print(f"schema_bound_violations: {violations}", flush=True)
+
     frozen = result["manifest"]["frozen_config"]
     e2e = result["metrics"]["e2e_test"]
     print("=== FROZEN CONFIG ===", flush=True)
