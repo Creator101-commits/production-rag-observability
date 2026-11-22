@@ -28,27 +28,35 @@ plt.rcParams.update(
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = json.loads((ROOT / "scripts" / "figure-data.json").read_text())
+FROZEN = DATA.get("frozen", {})
+FROZEN_KEY = f"{FROZEN.get('provider', '')}__k{FROZEN.get('k_ctx', '')}"
 
 COLORS = ["#4169e1", "#10a68b", "#d95f45", "#8659cf", "#64748b", "#e8a13c"]
+FROZEN_COLOR = "#e8a13c"
 
-fig, axes = plt.subplots(1, 3, figsize=(16, 4.6), layout="constrained")
+fig, axes = plt.subplots(1, 4, figsize=(21, 4.8), layout="constrained")
 
-# Panel 1: retrieval ablation nDCG@10 (test, retrieval-only).
+# Panel 1: headline retrieval systems only (full grid stays in report.md).
 abl = DATA["retrieval_ablations"]
-names = list(abl.keys())
+panel_names = DATA.get("retrieval_panel") or list(abl.keys())
+names = [n for n in panel_names if n in abl]
 ndcg = [abl[n]["ndcg_at_10"] for n in names]
 hit5 = [abl[n]["hit_at_5"] for n in names]
+frozen_ret = FROZEN.get("retrieval")
 y = np.arange(len(names))
 axes[0].barh(y, ndcg, color=COLORS[0], label="nDCG@10")
 axes[0].barh(y, hit5, color=COLORS[4], alpha=0.55, label="Hit@5")
 axes[0].set_yticks(y, names, fontsize=8)
+for i, n in enumerate(names):
+    if frozen_ret and (n == frozen_ret or n.startswith(f"{frozen_ret}+")):
+        axes[0].get_yticklabels()[i].set_fontweight("bold")
 axes[0].invert_yaxis()
 axes[0].set_xlabel("score")
-axes[0].set_title("Retrieval ablations (test)")
+axes[0].set_title("Retrieval (test)")
 axes[0].legend(loc="lower right", fontsize=8)
 axes[0].set_xlim(0, 1.0)
 
-# Panel 2: per-stage latency P50 and P95 from exported spans.
+# Panel 2: per-stage latency P50 and P95 from exported spans, log scale.
 lat = DATA["latency_by_stage"]
 stage_order = (
     "retrieval", "fusion", "rerank", "threshold", "generation",
@@ -62,7 +70,8 @@ p95 = [lat[s]["p95_ms"] for s in stages]
 axes[1].bar(x - width / 2, p50, width, color=COLORS[0], label="P50")
 axes[1].bar(x + width / 2, p95, width, color=COLORS[2], label="P95")
 axes[1].set_xticks(x, stages, rotation=35, ha="right", fontsize=8)
-axes[1].set_ylabel("ms")
+axes[1].set_yscale("log")
+axes[1].set_ylabel("ms (log)")
 axes[1].set_title("Per-stage latency (from spans)")
 axes[1].legend(fontsize=8)
 
@@ -112,6 +121,36 @@ axes[2].invert_yaxis()
 axes[2].set_xlim(0, 1.05)
 axes[2].set_xlabel("rate")
 axes[2].set_title("End-to-end quality (test)")
+
+# Panel 4: generator x context ablation (test): recall vs false-abstain.
+gen = DATA.get("generator_ablations", {})
+gen_names = list(gen.keys())
+gx = np.arange(len(gen_names))
+width_g = 0.38
+recall_vals = [
+    gen[n].get("required_point_recall", {}).get("mean", 0.0) for n in gen_names
+]
+fa_vals = [gen[n].get("false_abstain_rate", 0.0) for n in gen_names]
+bar_colors = [
+    FROZEN_COLOR if n == FROZEN_KEY else COLORS[0] for n in gen_names
+]
+axes[3].bar(gx - width_g / 2, recall_vals, width_g, color=bar_colors,
+            label="Req-point recall")
+axes[3].bar(gx + width_g / 2, fa_vals, width_g, color=COLORS[4],
+            alpha=0.8, label="False-abstain")
+for i, n in enumerate(gen_names):
+    if n == FROZEN_KEY:
+        axes[3].annotate(
+            "frozen", (gx[i], max(recall_vals[i], fa_vals[i]) + 0.02),
+            ha="center", fontsize=7, fontweight="bold", color="#8a5a00",
+        )
+axes[3].set_xticks(gx, [n.replace("qwen2.5-", "").replace("-instruct", "")
+                        for n in gen_names],
+                    rotation=30, ha="right", fontsize=8)
+axes[3].set_ylim(0, 1.05)
+axes[3].set_ylabel("rate")
+axes[3].set_title("Generator x context (test)")
+axes[3].legend(fontsize=8, loc="upper right")
 
 fig.suptitle(
     f"NIST RAG benchmark - {DATA.get('source', '')}",
