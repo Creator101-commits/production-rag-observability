@@ -53,7 +53,12 @@ for i, n in enumerate(names):
 axes[0].invert_yaxis()
 axes[0].set_xlabel("score")
 axes[0].set_title("Retrieval (test)")
-axes[0].legend(loc="lower right", fontsize=8)
+axes[0].legend(
+    loc="center left",
+    bbox_to_anchor=(1.02, 0.5),
+    fontsize=8,
+    borderaxespad=0,
+)
 axes[0].set_xlim(0, 1.0)
 
 # Panel 2: per-stage latency P50 and P95 from exported spans, log scale.
