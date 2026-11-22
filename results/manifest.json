@@ -1,0 +1,380 @@
+{
+  "git_sha": "71050399f2eb62ab0db48326fa90928df9ed78ad",
+  "generated_at": "2026-11-22T01:34:46Z",
+  "eval_file": "/kaggle/working/project/data/eval/nist_qa_v1.jsonl",
+  "eval_sha256": "a48a1021038a28ad8199f7e73caf9383b020e6291facdb5c0fcf6a60cdcb2696",
+  "corpus": {
+    "generated_at": "2026-11-21T23:25:31.823555+00:00",
+    "documents": [
+      {
+        "document_id": "nist_ai_100_1",
+        "title": "Artificial Intelligence Risk Management Framework (AI RMF 1.0)",
+        "source_url": "https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.100-1.pdf",
+        "sha256": "7576edb531d9848825814ee88e28b1795d3a84b435b4b797d3670eafdc4a89f1",
+        "byte_size": 1946127,
+        "page_count": 48,
+        "failed_pages": [],
+        "parser_version": "7.1.0"
+      },
+      {
+        "document_id": "nist_ai_600_1",
+        "title": "Artificial Intelligence Risk Management Framework: Generative AI Profile",
+        "source_url": "https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf",
+        "sha256": "6e73620ab6b64e90ef2c04bf0e0d6246185a2f4b1b13cab0df494496cff89b6a",
+        "byte_size": 1174643,
+        "page_count": 64,
+        "failed_pages": [],
+        "parser_version": "7.1.0"
+      }
+    ]
+  },
+  "frozen_config": {
+    "chunk_tokens": 512,
+    "overlap_ratio": 0.15,
+    "retrieval": {
+      "name": "hybrid-rrf-k10-w1-1",
+      "kind": "hybrid",
+      "rrf_k": 10.0,
+      "bm25_weight": 1.0,
+      "dense_weight": 1.0
+    },
+    "rerank": "cross_encoder",
+    "rerank_depth": 20,
+    "provider": "qwen2.5-3b-fp16",
+    "abstain_threshold": 0.00034306816121190784,
+    "threshold_score_scale": "cross-encoder relevance score (post-rerank top score)",
+    "threshold_effectively_inactive": true,
+    "candidate_depth": 20,
+    "retrieval_top_k": 10,
+    "evidence_top_k": 5,
+    "seed": 42
+  },
+  "dev_selection": {
+    "chunk_size_table": [
+      {
+        "chunk_tokens": 256,
+        "hit_at_5": 0.8421052631578947,
+        "ndcg_at_10": 0.640570136936708,
+        "mean_context_tokens": 254.788,
+        "num_chunks": 250
+      },
+      {
+        "chunk_tokens": 512,
+        "hit_at_5": 0.8947368421052632,
+        "ndcg_at_10": 0.6532872112859818,
+        "mean_context_tokens": 506.515873015873,
+        "num_chunks": 126
+      },
+      {
+        "chunk_tokens": 768,
+        "hit_at_5": 0.8421052631578947,
+        "ndcg_at_10": 0.6196792566712634,
+        "mean_context_tokens": 758.3690476190476,
+        "num_chunks": 84
+      }
+    ],
+    "retrieval_table": [
+      {
+        "system": "bm25",
+        "kind": "bm25",
+        "rrf_k": 60.0,
+        "bm25_weight": 1.0,
+        "dense_weight": 1.0,
+        "hit_at_1": 0.7894736842105263,
+        "hit_at_3": 0.7894736842105263,
+        "hit_at_5": 0.7894736842105263,
+        "hit_at_10": 0.8421052631578947,
+        "mrr_at_10": 0.7953216374269005,
+        "ndcg_at_10": 0.5885278527798523
+      },
+      {
+        "system": "dense",
+        "kind": "dense",
+        "rrf_k": 60.0,
+        "bm25_weight": 1.0,
+        "dense_weight": 1.0,
+        "hit_at_1": 0.7368421052631579,
+        "hit_at_3": 0.7894736842105263,
+        "hit_at_5": 0.8947368421052632,
+        "hit_at_10": 0.9473684210526315,
+        "mrr_at_10": 0.7900584795321637,
+        "ndcg_at_10": 0.6017792839924222
+      },
+      {
+        "system": "hybrid-rrf-k10-w1-1",
+        "kind": "hybrid",
+        "rrf_k": 10.0,
+        "bm25_weight": 1.0,
+        "dense_weight": 1.0,
+        "hit_at_1": 0.7894736842105263,
+        "hit_at_3": 0.8947368421052632,
+        "hit_at_5": 0.8947368421052632,
+        "hit_at_10": 0.9473684210526315,
+        "mrr_at_10": 0.8391812865497076,
+        "ndcg_at_10": 0.6536733381278513
+      },
+      {
+        "system": "hybrid-rrf-k10-w1-2",
+        "kind": "hybrid",
+        "rrf_k": 10.0,
+        "bm25_weight": 1.0,
+        "dense_weight": 2.0,
+        "hit_at_1": 0.7894736842105263,
+        "hit_at_3": 0.8421052631578947,
+        "hit_at_5": 0.8947368421052632,
+        "hit_at_10": 0.8947368421052632,
+        "mrr_at_10": 0.8263157894736842,
+        "ndcg_at_10": 0.6511288118244225
+      },
+      {
+        "system": "hybrid-rrf-k10-w2-1",
+        "kind": "hybrid",
+        "rrf_k": 10.0,
+        "bm25_weight": 2.0,
+        "dense_weight": 1.0,
+        "hit_at_1": 0.7894736842105263,
+        "hit_at_3": 0.8421052631578947,
+        "hit_at_5": 0.8947368421052632,
+        "hit_at_10": 0.9473684210526315,
+        "mrr_at_10": 0.8355263157894737,
+        "ndcg_at_10": 0.6373825341281211
+      },
+      {
+        "system": "hybrid-rrf-k30-w1-1",
+        "kind": "hybrid",
+        "rrf_k": 30.0,
+        "bm25_weight": 1.0,
+        "dense_weight": 1.0,
+        "hit_at_1": 0.7894736842105263,
+        "hit_at_3": 0.8947368421052632,
+        "hit_at_5": 0.8947368421052632,
+        "hit_at_10": 0.9473684210526315,
+        "mrr_at_10": 0.8385964912280702,
+        "ndcg_at_10": 0.6532872112859818
+      },
+      {
+        "system": "hybrid-rrf-k30-w1-2",
+        "kind": "hybrid",
+        "rrf_k": 30.0,
+        "bm25_weight": 1.0,
+        "dense_weight": 2.0,
+        "hit_at_1": 0.7368421052631579,
+        "hit_at_3": 0.8947368421052632,
+        "hit_at_5": 0.8947368421052632,
+        "hit_at_10": 0.8947368421052632,
+        "mrr_at_10": 0.8070175438596492,
+        "ndcg_at_10": 0.6457130163507808
+      },
+      {
+        "system": "hybrid-rrf-k30-w2-1",
+        "kind": "hybrid",
+        "rrf_k": 30.0,
+        "bm25_weight": 2.0,
+        "dense_weight": 1.0,
+        "hit_at_1": 0.7894736842105263,
+        "hit_at_3": 0.8421052631578947,
+        "hit_at_5": 0.8947368421052632,
+        "hit_at_10": 0.9473684210526315,
+        "mrr_at_10": 0.8364661654135338,
+        "ndcg_at_10": 0.6301243672587592
+      },
+      {
+        "system": "hybrid-rrf-k60-w1-1",
+        "kind": "hybrid",
+        "rrf_k": 60.0,
+        "bm25_weight": 1.0,
+        "dense_weight": 1.0,
+        "hit_at_1": 0.7894736842105263,
+        "hit_at_3": 0.8947368421052632,
+        "hit_at_5": 0.8947368421052632,
+        "hit_at_10": 0.9473684210526315,
+        "mrr_at_10": 0.8385964912280702,
+        "ndcg_at_10": 0.6532872112859818
+      },
+      {
+        "system": "hybrid-rrf-k60-w1-2",
+        "kind": "hybrid",
+        "rrf_k": 60.0,
+        "bm25_weight": 1.0,
+        "dense_weight": 2.0,
+        "hit_at_1": 0.7368421052631579,
+        "hit_at_3": 0.8947368421052632,
+        "hit_at_5": 0.8947368421052632,
+        "hit_at_10": 0.8947368421052632,
+        "mrr_at_10": 0.8070175438596492,
+        "ndcg_at_10": 0.644974856391324
+      },
+      {
+        "system": "hybrid-rrf-k60-w2-1",
+        "kind": "hybrid",
+        "rrf_k": 60.0,
+        "bm25_weight": 2.0,
+        "dense_weight": 1.0,
+        "hit_at_1": 0.7894736842105263,
+        "hit_at_3": 0.8421052631578947,
+        "hit_at_5": 0.8947368421052632,
+        "hit_at_10": 0.9473684210526315,
+        "mrr_at_10": 0.8364661654135338,
+        "ndcg_at_10": 0.6278872370582255
+      }
+    ],
+    "rerank_table": [
+      {
+        "rerank": "none",
+        "depth": 0,
+        "hit_at_1": 0.7894736842105263,
+        "hit_at_3": 0.8947368421052632,
+        "hit_at_5": 0.8947368421052632,
+        "hit_at_10": 0.9473684210526315,
+        "mrr_at_10": 0.8391812865497076,
+        "ndcg_at_10": 0.6536733381278513
+      },
+      {
+        "rerank": "cross_encoder",
+        "depth": 20,
+        "hit_at_1": 0.8421052631578947,
+        "hit_at_3": 0.9473684210526315,
+        "hit_at_5": 1.0,
+        "hit_at_10": 1.0,
+        "mrr_at_10": 0.8991228070175438,
+        "ndcg_at_10": 0.6681291749038787
+      }
+    ],
+    "generator_objective": "required_point_recall_s.t._all_dev_unanswerables_abstain",
+    "generator_table": [
+      {
+        "provider": "qwen2.5-3b-fp16",
+        "k_ctx": 3,
+        "threshold": 0.0003541131445672363,
+        "threshold_objective": "max_answerable_rate_s.t._all_dev_unanswerable_abstain",
+        "dev_all_unanswerables_abstained": true,
+        "dev_required_point_recall": 0.9473684210526315,
+        "dev_abstain_f1": 1.0,
+        "dev_false_abstain_rate": 0.0,
+        "dev_abstention_sources": {
+          "threshold": 1,
+          "parse_failure": 1,
+          "model_abstain": 3
+        },
+        "test_required_point_recall": 0.8423423423423424,
+        "test_abstain_f1": 0.9473684210526316,
+        "test_false_abstain_rate": 0.02702702702702703,
+        "test_parse_failures": 3,
+        "dev_truncation_rate": 0.0,
+        "test_truncation_rate": 0.043478260869565216
+      },
+      {
+        "provider": "qwen2.5-3b-fp16",
+        "k_ctx": 5,
+        "threshold": 0.00034306816121190784,
+        "threshold_objective": "max_answerable_rate_s.t._all_dev_unanswerable_abstain",
+        "dev_all_unanswerables_abstained": true,
+        "dev_required_point_recall": 1.0,
+        "dev_abstain_f1": 1.0,
+        "dev_false_abstain_rate": 0.0,
+        "dev_abstention_sources": {
+          "truncated": 3,
+          "model_abstain": 2
+        },
+        "test_required_point_recall": 0.8693693693693695,
+        "test_abstain_f1": 0.9473684210526316,
+        "test_false_abstain_rate": 0.02702702702702703,
+        "test_parse_failures": 5,
+        "dev_truncation_rate": 0.125,
+        "test_truncation_rate": 0.10869565217391304
+      },
+      {
+        "provider": "qwen2.5-7b-nf4",
+        "k_ctx": 3,
+        "threshold": 0.00034306816121190784,
+        "threshold_objective": "max_answerable_rate_s.t._all_dev_unanswerable_abstain",
+        "dev_all_unanswerables_abstained": true,
+        "dev_required_point_recall": 0.8947368421052632,
+        "dev_abstain_f1": 0.9090909090909091,
+        "dev_false_abstain_rate": 0.05263157894736842,
+        "dev_abstention_sources": {
+          "model_abstain": 6
+        },
+        "test_required_point_recall": 0.9099099099099098,
+        "test_abstain_f1": 0.9411764705882353,
+        "test_false_abstain_rate": 0.0,
+        "test_parse_failures": 0,
+        "dev_truncation_rate": 0.0,
+        "test_truncation_rate": 0.0
+      },
+      {
+        "provider": "qwen2.5-7b-nf4",
+        "k_ctx": 5,
+        "threshold": 0.9703240692615509,
+        "threshold_objective": "max_answerable_rate_s.t._all_dev_unanswerable_abstain",
+        "dev_all_unanswerables_abstained": true,
+        "dev_required_point_recall": 0.5263157894736842,
+        "dev_abstain_f1": 0.5263157894736842,
+        "dev_false_abstain_rate": 0.47368421052631576,
+        "dev_abstention_sources": {
+          "threshold": 9,
+          "model_abstain": 5
+        },
+        "test_required_point_recall": 0.40540540540540543,
+        "test_abstain_f1": 0.4736842105263158,
+        "test_false_abstain_rate": 0.5405405405405406,
+        "test_parse_failures": 0,
+        "dev_truncation_rate": 0.0,
+        "test_truncation_rate": 0.0
+      }
+    ]
+  },
+  "models": {
+    "dense": {
+      "model_id": "BAAI/bge-base-en-v1.5",
+      "revision": "a5beb1e3e68b9ab74eb54cfd186867f64f240e1a"
+    },
+    "reranker": {
+      "model_id": "BAAI/bge-reranker-base",
+      "revision": "2cfc18c9415c912f9d8155881c133215df768a70"
+    },
+    "generator": {
+      "model_id": "Qwen/Qwen2.5-3B-Instruct",
+      "revision": "aa8e72537993ba99e69dfaafa59ed015b17504d1",
+      "quantization": ""
+    },
+    "generator_candidates": {
+      "qwen2.5-3b-fp16": {
+        "model_id": "Qwen/Qwen2.5-3B-Instruct",
+        "revision": "aa8e72537993ba99e69dfaafa59ed015b17504d1",
+        "quantization": ""
+      },
+      "qwen2.5-7b-nf4": {
+        "model_id": "Qwen/Qwen2.5-7B-Instruct",
+        "revision": "a09a35458c702b33eeacc393d103063234e8bc28",
+        "quantization": "nf4"
+      }
+    },
+    "nli": {
+      "model_id": "cross-encoder/nli-deberta-v3-base",
+      "revision": "6c749ce3425cd33b46d187e45b92bbf96ee12ec7"
+    },
+    "tokenizer": "hf:BAAI/bge-base-en-v1.5@a5beb1e3e68b"
+  },
+  "gpu": "Tesla T4",
+  "package_versions": {
+    "numpy": "2.1.3",
+    "scipy": "1.16.3",
+    "pandas": "2.3.3",
+    "pypdf": "7.1.0",
+    "fastapi": "0.141.1",
+    "uvicorn": "0.54.0",
+    "httpx": "0.28.1",
+    "opentelemetry-sdk": "1.42.1",
+    "sentence-transformers": "3.4.1",
+    "torch": "2.11.0+cu130",
+    "transformers": "4.46.3",
+    "lm-format-enforcer": "0.11.3",
+    "bitsandbytes": "0.50.2"
+  },
+  "seeds": {
+    "benchmark": 42,
+    "bootstrap": 42,
+    "n_resamples": 1000
+  }
+}
