@@ -1,6 +1,6 @@
 # NIST RAG Benchmark Report
 
-- git SHA: `71050399f2eb62ab0db48326fa90928df9ed78ad`
+- git SHA: `94ac5e4c80f5d8845b6f00c7496532db691f19e4`
 - GPU: Tesla T4
 - Frozen system: hybrid-rrf-k10-w1-1 + rerank=cross_encoder@20, chunk=512 tokens, provider=qwen2.5-3b-fp16, k_ctx=5, abstain_threshold=0.00034306816121190784
 - Threshold score scale: cross-encoder relevance score (post-rerank top score); effectively inactive: True
@@ -23,12 +23,13 @@
 | Citation hit rate | 86.1% [72.2, 97.2] |
 | NLI claim support, windowed (estimate) | 66.1% (37/56) |
 | NLI claim support, whole-chunk (secondary) | 12.5% |
-| Abstentions by source | {'citation_validation': 1, 'truncated': 5, 'model_abstain': 4} |
-| Parse failures | 5 |
-| Truncation rate | 10.9% (5/46 hit cap) |
+| Abstentions by source | {'citation_validation': 1, 'model_abstain': 9} |
+| Parse failures | 0 |
+| Schema bound violations | 0 |
+| Truncation rate | 0.0% (0/46 hit cap) |
 | Prompt tokens total | 132041 |
-| Completion tokens total | 9298 |
-| GPU-seconds | 7256.86 |
+| Completion tokens total | 5888 |
+| GPU-seconds | 6700.41 |
 
 ## Retrieval ablations (test, retrieval-only)
 
@@ -50,23 +51,23 @@
 
 ## Generator x context ablation (test)
 
-| Candidate | Req-point recall | Abstain F1 | False-abstain | Parse failures | Truncation |
-| :--- | ---: | ---: | ---: | ---: | ---: |
-| qwen2.5-3b-fp16__k3 | 0.842 | 0.947 | 0.027 | 3 | 0.043 |
-| qwen2.5-3b-fp16__k5 (frozen) | 0.869 | 0.947 | 0.027 | 5 | 0.109 |
-| qwen2.5-7b-nf4__k3 | 0.910 | 0.941 | 0.000 | 0 | 0.000 |
-| qwen2.5-7b-nf4__k5 | 0.405 | 0.474 | 0.541 | 0 | 0.000 |
+| Candidate | Req-point recall | Abstain F1 | False-abstain | Parse failures | Truncation | Schema violations |
+| :--- | ---: | ---: | ---: | ---: | ---: | ---: |
+| qwen2.5-3b-fp16__k3 | 0.842 | 0.947 | 0.027 | 1 | 0.000 | 0 |
+| qwen2.5-3b-fp16__k5 (frozen) | 0.869 | 0.947 | 0.027 | 0 | 0.000 | 0 |
+| qwen2.5-7b-nf4__k3 | 0.910 | 0.941 | 0.000 | 0 | 0.000 | 0 |
+| qwen2.5-7b-nf4__k5 | 0.405 | 0.474 | 0.541 | 0 | 0.000 | 0 |
 
 ## Per-stage latency (from exported spans)
 
 | Stage | Count | P50 ms | P95 ms | Mean ms |
 | :--- | ---: | ---: | ---: | ---: |
-| fusion | 70 | 0.10 | 0.13 | 0.10 |
-| generation | 280 | 20255.14 | 65305.39 | 25446.02 |
-| nli_scoring | 127 | 511.01 | 1470.91 | 667.53 |
-| request | 70 | 683.61 | 711.05 | 687.98 |
-| rerank | 70 | 670.64 | 698.04 | 674.32 |
-| retrieval | 70 | 13.11 | 14.25 | 13.09 |
+| fusion | 70 | 0.11 | 0.14 | 0.11 |
+| generation | 280 | 18918.08 | 46551.25 | 23465.50 |
+| nli_scoring | 127 | 496.74 | 1481.68 | 659.63 |
+| request | 70 | 678.63 | 691.64 | 675.39 |
+| rerank | 70 | 664.87 | 676.98 | 661.39 |
+| retrieval | 70 | 13.10 | 15.00 | 13.38 |
 
 ## Dev selection
 

@@ -1,10 +1,10 @@
 {
-  "git_sha": "71050399f2eb62ab0db48326fa90928df9ed78ad",
-  "generated_at": "2026-11-22T01:34:46Z",
+  "git_sha": "94ac5e4c80f5d8845b6f00c7496532db691f19e4",
+  "generated_at": "2026-11-22T04:34:14Z",
   "eval_file": "/kaggle/working/project/data/eval/nist_qa_v1.jsonl",
   "eval_sha256": "a48a1021038a28ad8199f7e73caf9383b020e6291facdb5c0fcf6a60cdcb2696",
   "corpus": {
-    "generated_at": "2026-11-21T23:25:31.823555+00:00",
+    "generated_at": "2026-11-22T02:34:29.648737+00:00",
     "documents": [
       {
         "document_id": "nist_ai_100_1",
@@ -259,9 +259,11 @@
         "test_required_point_recall": 0.8423423423423424,
         "test_abstain_f1": 0.9473684210526316,
         "test_false_abstain_rate": 0.02702702702702703,
-        "test_parse_failures": 3,
+        "test_parse_failures": 1,
         "dev_truncation_rate": 0.0,
-        "test_truncation_rate": 0.043478260869565216
+        "test_truncation_rate": 0.0,
+        "schema_bound_violations_dev": 0,
+        "schema_bound_violations_test": 0
       },
       {
         "provider": "qwen2.5-3b-fp16",
@@ -273,15 +275,16 @@
         "dev_abstain_f1": 1.0,
         "dev_false_abstain_rate": 0.0,
         "dev_abstention_sources": {
-          "truncated": 3,
-          "model_abstain": 2
+          "model_abstain": 5
         },
         "test_required_point_recall": 0.8693693693693695,
         "test_abstain_f1": 0.9473684210526316,
         "test_false_abstain_rate": 0.02702702702702703,
-        "test_parse_failures": 5,
-        "dev_truncation_rate": 0.125,
-        "test_truncation_rate": 0.10869565217391304
+        "test_parse_failures": 0,
+        "dev_truncation_rate": 0.0,
+        "test_truncation_rate": 0.0,
+        "schema_bound_violations_dev": 0,
+        "schema_bound_violations_test": 0
       },
       {
         "provider": "qwen2.5-7b-nf4",
@@ -300,7 +303,9 @@
         "test_false_abstain_rate": 0.0,
         "test_parse_failures": 0,
         "dev_truncation_rate": 0.0,
-        "test_truncation_rate": 0.0
+        "test_truncation_rate": 0.0,
+        "schema_bound_violations_dev": 0,
+        "schema_bound_violations_test": 0
       },
       {
         "provider": "qwen2.5-7b-nf4",
@@ -320,7 +325,9 @@
         "test_false_abstain_rate": 0.5405405405405406,
         "test_parse_failures": 0,
         "dev_truncation_rate": 0.0,
-        "test_truncation_rate": 0.0
+        "test_truncation_rate": 0.0,
+        "schema_bound_violations_dev": 0,
+        "schema_bound_violations_test": 0
       }
     ]
   },
