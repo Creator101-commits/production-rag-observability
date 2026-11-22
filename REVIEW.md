@@ -57,3 +57,31 @@ rewrites `reason` as `anyOf` string-or-null, adds character-level
 parser tests against the real `OUTPUT_SCHEMA`, and adds a
 post-generation guard that counts records violating schema bounds in
 metrics (the smoke kernel fails if any appear).
+
+## Verified on Kaggle: v13 run
+
+- Smoke kernel `production-rag-observability-smoke`: the first v13
+  smoke (git SHA `9dea00bccf64a0075ba2703fed0b5a6d02f92e02`, an
+  earlier unpushed revision of the same commits) failed by design
+  with `schema_bound_violations {dev: 13, test: 0}`
+  because the guard counted the citation-resolved stored `answer`
+  (answer text plus claim texts and `[chunk_id]` markers) against the
+  300-char schema bound; the raw provider `answer` was exactly at the
+  cap and `reason` violations were already 0. The guard was narrowed
+  to `raw_output` provider fields (stored claims still checked) and a
+  regression test added; smoke v2 on git SHA
+  `94ac5e4c80f5d8845b6f00c7496532db691f19e4` then completed clean.
+- Full kernel `production-rag-observability-benchmark` on git SHA
+  `94ac5e4c80f5d8845b6f00c7496532db691f19e4`: frozen config
+  `hybrid-rrf-k10-w1-1` + `cross_encoder`@20, 512-token chunks,
+  `qwen2.5-3b-fp16` k_ctx=5, threshold 0.000343 (effectively
+  inactive); gpu_seconds 6700.4 on a Tesla T4. `schema_bound_violations`
+  is `{dev: 0, test: 0}` (recounted from the downloaded candidate
+  records with `count_schema_bound_violations`: 0 across all 8
+  dev/test candidate files); token-cap hits 0 and truncation rate 0.0
+  for every candidate on both splits; the frozen candidate has 0 parse
+  failures. Test (46 questions: 37 answerable, 9 unanswerable):
+  required_point_recall 0.869 [0.761, 0.950], abstain F1 0.947,
+  false_answer_rate 0.000, false_abstain_rate 0.027; abstentions are
+  model_abstain 9 and citation_validation 1. Outputs curated verbatim
+  into `results/`.

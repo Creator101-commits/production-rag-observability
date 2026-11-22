@@ -150,7 +150,7 @@ Spans emitted per query: `request`, `retrieval`, `fusion` (hybrid only), `rerank
 
 ## Results
 
-Kaggle kernel v12, git SHA `7105039`, Tesla T4. Frozen system: `hybrid-rrf-k10-w1-1` + `cross_encoder` rerank@20, 512-token chunks at 15% overlap, `qwen2.5-3b-fp16` with 5 evidence chunks, abstain threshold 0.00034 (effectively inactive). This is the truncation-correction run: bounded JSON schema plus `max_new_tokens=768`, with cap-truncated parse failures abstaining as `truncated`.
+Kaggle kernel v13, git SHA `94ac5e4`, Tesla T4. Frozen system: `hybrid-rrf-k10-w1-1` + `cross_encoder` rerank@20, 512-token chunks at 15% overlap, `qwen2.5-3b-fp16` with 5 evidence chunks, abstain threshold 0.00034 (effectively inactive). This is the schema-bound correction run: `reason` is now an enforced `anyOf` string-or-null and a post-generation guard counts records violating the output bounds; `max_new_tokens=768` and cap-truncated parse failures still abstain as `truncated`.
 
 ### Retrieval ablations (test, retrieval-only)
 
@@ -163,7 +163,7 @@ Kaggle kernel v12, git SHA `7105039`, Tesla T4. Frozen system: `hybrid-rrf-k10-w
 | hybrid-rrf-k10-w1-1 + rerank-cross_encoder | 0.617 | 0.973 | 0.883 |
 | hybrid-rrf-k60-w2-1 | 0.610 | 0.919 | 0.744 |
 
-### End-to-end test metrics (frozen config, 46 questions)
+### End-to-end test metrics (frozen config, 46 questions: 37 answerable, 9 unanswerable)
 
 | Metric | Value |
 | :--- | :--- |
@@ -176,40 +176,43 @@ Kaggle kernel v12, git SHA `7105039`, Tesla T4. Frozen system: `hybrid-rrf-k10-w
 | Citation label validity | 1.000 [1.000, 1.000] |
 | Citation page precision | 0.799 [0.671, 0.917] |
 | Citation hit rate | 0.861 [0.722, 0.972] |
-| NLI claim support (estimate) | 0.661 |
-| Abstention sources | truncated 5, model_abstain 4, citation_validation 1 |
-| Parse failures / token-cap hits | 5 / 5 (truncation rate 0.109) |
-| GPU-seconds | 7256.9 |
+| NLI claim support (estimate) | 0.661 (37/56 claims; whole-chunk 0.125) |
+| Abstention sources | model_abstain 9, citation_validation 1 |
+| Parse failures / token-cap hits | 0 / 0 (truncation rate 0.000) |
+| Schema-bound violations | 0 on dev, 0 on test |
+| GPU-seconds | 6700.4 |
 
 ### Generator x context ablation (test)
 
-| Candidate | Req-point recall | False-abstain | False-answer | Cap hits | Truncation |
-| :--- | ---: | ---: | ---: | ---: | ---: |
-| qwen2.5-3b-fp16 k3 | 0.842 [0.721, 0.946] | 0.027 | 0.000 | 2 | 0.043 |
-| qwen2.5-3b-fp16 k5 (frozen) | 0.869 [0.761, 0.950] | 0.027 | 0.000 | 5 | 0.109 |
-| qwen2.5-7b-nf4 k3 | 0.910 [0.811, 0.991] | 0.000 | 0.111 | 0 | 0.000 |
-| qwen2.5-7b-nf4 k5 | 0.405 [0.243, 0.568] | 0.541 | 0.000 | 0 | 0.000 |
+| Candidate | Req-point recall | False-abstain | False-answer | Parse fail | Cap hits | Truncation |
+| :--- | ---: | ---: | ---: | ---: | ---: | ---: |
+| qwen2.5-3b-fp16 k3 | 0.842 [0.721, 0.946] | 0.027 | 0.000 | 1 | 0 | 0.000 |
+| qwen2.5-3b-fp16 k5 (frozen) | 0.869 [0.761, 0.950] | 0.027 | 0.000 | 0 | 0 | 0.000 |
+| qwen2.5-7b-nf4 k3 | 0.910 [0.811, 0.991] | 0.000 | 0.111 | 0 | 0 | 0.000 |
+| qwen2.5-7b-nf4 k5 | 0.405 [0.243, 0.568] | 0.541 | 0.000 | 0 | 0 | 0.000 |
 
 ### Per-stage latency (from exported spans, ms)
 
+`request` spans cover only the context-build retrieval sweep (70 questions through retrieval, fusion, and rerank); they exclude generation. `generation` spans are one per `provider.generate` call: 280 calls = 70 questions x 4 generator candidates. The frozen candidate averages 2,870 prompt and 128 completion tokens per call.
+
 | Stage | P50 | P95 |
 | :--- | ---: | ---: |
-| retrieval | 13.1 | 14.3 |
+| retrieval | 13.1 | 15.0 |
 | fusion | 0.1 | 0.1 |
-| rerank | 670.6 | 698.0 |
-| generation | 20255.1 | 65305.4 |
-| nli_scoring | 511.0 | 1470.9 |
-| request | 683.6 | 711.0 |
+| rerank | 664.9 | 677.0 |
+| generation (per call) | 18918.1 | 46551.2 |
+| nli_scoring | 496.7 | 1481.7 |
+| request (retrieval sweep only) | 678.6 | 691.6 |
 
 ## Findings
 
-- **RQ1 (lexical vs dense)**: BM25 (nDCG@10 0.602) beats dense BGE (0.517); the best hybrid reaches 0.625. Lexical retrieval is strong on this corpus's precise terminology.
+- **RQ1 (lexical vs dense)**: BM25 (nDCG@10 0.602, Hit@5 0.946) beats dense BGE (0.517, 0.811) on test; the best hybrid reaches 0.625 nDCG@10. Dense actually won on dev, so the ordering is not stable across splits; with 37 answerable questions and no CIs on these ablations, small differences should not be over-read.
 - **RQ2 (chunking)**: 512 tokens won on dev Hit@5 (0.895 vs 0.842 at 256 and 768).
 - **RQ3 (hybrid + rerank)**: the frozen `hybrid-rrf-k10-w1-1` plus BGE cross-encoder reaches test Hit@5 0.973 and MRR@10 0.883 versus 0.919 / 0.753 without reranking, so reranking stayed in the frozen config.
-- **RQ4 (abstention)**: the score threshold is effectively inactive (0.00034); abstention is driven by the model (4 model_abstain), cap truncation (5 truncated), and citation validation (1). Abstain precision 0.900, recall 1.000, F1 0.947; false-answer rate 0.000 and false-abstain rate 0.027 on test.
-- **RQ5 (stage cost)**: generation dominates recorded stage time (P50 about 20 s per call, P95 about 65 s); reranking adds about 0.67 s; retrieval and fusion are negligible. GPU-seconds 7256.9 for the full benchmark.
-- **The v12 truncation correction mostly worked, with one schema hole**: bounded fields plus `max_new_tokens=768` eliminated non-truncation parse failures, but the `reason` field used a `{"type": ["string", "null"]}` union that lm-format-enforcer does not bound, so all 5 remaining cap hits were run-on `reason` strings. v13 rewrites `reason` as an `anyOf` schema (enforced) and adds a post-generation bound check; required-point recall is 0.869 [0.761, 0.950] and abstain F1 0.947 on the v12 run.
-- **Honest selection caveat**: dev selection chose `qwen2.5-3b-fp16` k_ctx=5 (dev recall 1.0, abstain F1 1.0). On test, `qwen2.5-7b-nf4` k_ctx=3 scored higher recall (0.910 vs 0.869) but also a nonzero false-answer rate (0.111 vs 0.000); the frozen config trades a little recall for perfect unanswerable abstention. `qwen2.5-7b-nf4` k_ctx=5 collapsed (recall 0.405, false-abstain 0.541).
+- **RQ4 (abstention)**: the score threshold is effectively inactive (0.00034); abstention is driven by the model (9 model_abstain) and citation validation (1). Abstain precision 0.900, recall 1.000, F1 0.947; false-answer rate 0.000 and false-abstain rate 0.027 on test.
+- **RQ5 (stage cost)**: generation dominates recorded stage time (P50 about 18.9 s and P95 about 46.6 s per `provider.generate` call, 280 calls across 4 candidates x 70 questions); reranking adds about 0.66 s; retrieval and fusion are negligible. The frozen candidate averages 2,870 prompt and 128 completion tokens per call. GPU-seconds 6700.4 for the full benchmark on a Tesla T4.
+- **The v13 schema-bound fix worked**: `reason` is now an enforced `anyOf` string-or-null, and the post-generation guard counted zero bound violations on dev and test across all four candidates; every candidate also has zero token-cap hits (v12's 5 test cap hits were run-on `reason` strings). Frozen-candidate headline metrics are unchanged from v12: required-point recall 0.869 [0.761, 0.950], abstain F1 0.947.
+- **Honest selection caveat**: dev selection chose `qwen2.5-3b-fp16` k_ctx=5 (dev recall 1.000, all 5 dev unanswerables abstained, dev false-abstain 0.000). On test, `qwen2.5-7b-nf4` k_ctx=3 scored higher recall (0.910 [0.811, 0.991] vs 0.869 [0.761, 0.950]); the intervals overlap on 37 answerable questions and there was no re-selection, but 7b-nf4 k3 also shows a nonzero false-answer rate (0.111 vs 0.000). `qwen2.5-7b-nf4` k_ctx=5 collapsed (recall 0.405, false-abstain 0.541): its dev-calibrated threshold is 0.970 because dev question q063 was the one unanswerable the model answered (top retrieval score 0.962), and the all-dev-unanswerables-abstain constraint forced the threshold above it; that threshold then abstained 8 further answerable dev questions (dev false-abstain 0.474) and generalized poorly to test.
 
 ## Reproduction
 
@@ -231,7 +234,7 @@ docker build -t rag-system .   # CPU image, fake provider + fixture index
 
 ## Evaluation limits
 
-- Revision note: kernel v11 (git 69bf7ef) completed a frozen test read before the v12 truncation correction; dev evidence showed every parse failure hit the 384-token cap. v12 (git 7105039) raised `max_new_tokens` to 768 and bounded most schema fields; its `reason` field still used an unenforced type-union form, which dev evidence showed produced run-on strings past the cap. v13 corrects `reason` to an enforced `anyOf` schema and adds a post-generation bound-violation count. v11 headline test numbers, disclosed for transparency: required-point recall 0.595, abstain F1 0.533, false-abstain rate 0.351, 13/46 records cap-truncated. v12: required-point recall 0.869, abstain F1 0.947, false-abstain rate 0.027, 5/46 cap-truncated (all abstained as `truncated`).
+- Revision note: kernel v11 (git 69bf7ef) completed a frozen test read before the v12 truncation correction; dev evidence showed every parse failure hit the 384-token cap. v12 (git 7105039) raised `max_new_tokens` to 768 and bounded most schema fields; its `reason` field still used an unenforced type-union form, which dev evidence showed produced run-on strings past the cap. v13 corrects `reason` to an enforced `anyOf` schema and adds a post-generation bound-violation count; on the v13 run (git 94ac5e4) the guard reported 0 violations on dev and test and every candidate had 0/70 cap hits, while headline metrics stayed at required-point recall 0.869 and abstain F1 0.947. v11 headline test numbers, disclosed for transparency: required-point recall 0.595, abstain F1 0.533, false-abstain rate 0.351, 13/46 records cap-truncated. v12: required-point recall 0.869, abstain F1 0.947, false-abstain rate 0.027, 5/46 cap-truncated (all abstained as `truncated`).
 - The eval set is 70 questions authored by a single person; treat it as a smoke benchmark, not a broad capability measure.
 - Required-point scoring is lexical after normalization (NFKC, lowercase, whitespace collapse, hyphen-insensitive); paraphrases outside the acceptable-alternative lists count as misses.
 - NLI claim support is a model-based estimate (`cross-encoder/nli-deberta-v3-base`, entailment argmax), not verified entailment.
