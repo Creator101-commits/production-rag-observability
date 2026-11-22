@@ -2,6 +2,30 @@
 
 # Build Plan: Production RAG with Observability
 
+## Implementation status (current)
+
+The phases below are now backed by real components, not fixtures: pinned
+NIST PDF ingestion with sha256 verification, page-aware token chunking,
+BM25 + BGE dense + weighted RRF retrieval, an optional BGE cross-encoder
+reranker, a structured Qwen2.5-3B generator with label-to-chunk citation
+resolution, code-level abstention tuned on dev only, real OpenTelemetry
+spans with redacted attributes, and a frozen dev/test benchmark over the
+70-question `data/eval/nist_qa_v1.jsonl` set. The deterministic fake
+provider remains the default for tests, CI, and the CPU Docker image.
+
+Decisions recorded since the original plan:
+
+- Generation runs locally via `HFLocalProvider` (Qwen2.5-3B-Instruct,
+  fp16, greedy) on Kaggle; a Groq hosted adapter is deferred until a key
+  is provided.
+- Langfuse tracing moves to the separate monitoring project; this repo
+  uses the OpenTelemetry SDK directly with in-memory, JSONL, and
+  optional OTLP exporters.
+- Cost is computed only when per-token prices are explicitly configured;
+  no illustrative dollar figures are reported by default.
+- NLI claim support uses `cross-encoder/nli-deberta-v3-base` and is
+  labeled a model-based estimate.
+
 ## Goal
 
 Build a citation-grounded question-answering service over a version-pinned public technical-document corpus and make every retrieval and generation stage observable. The system will be judged with a frozen evaluation set containing answerable, unanswerable, and adversarial questions, with explicit measurements for retrieval, citation support, groundedness, abstention, latency, token use, cost, and failures.
@@ -430,12 +454,12 @@ Raw content is excluded by default. A local development flag may record content 
 ## Open questions
 
 1. **Exact corpus:** Freeze the NIST document list and revisions before authoring the final evaluation set.
-2. **Hosted model:** Select one provider/model based on structured-output support, terms, cost ceiling, and reproducible version identification.
-3. **Local fallback:** Decide whether v1 includes a real local generator or only a deterministic test provider plus hosted production adapter.
+2. **Hosted model:** Deferred. `HFLocalProvider` (Qwen2.5-3B-Instruct) is the real generator on Kaggle; a Groq adapter comes later when a key is provided.
+3. **Local fallback:** Resolved: the deterministic fake provider covers tests/CI/Docker; `HFLocalProvider` is the real local generator.
 4. **Vector index:** Confirm FAISS compatibility on target platforms or use another local index with reproducible exact-search checks.
 5. **Embedding and reranking models:** Pin models only after testing license, size, context length, scientific-document behavior, and CPU latency.
 6. **Evaluation authorship:** Determine how many questions receive independent review and how disagreements over supporting evidence are resolved.
 7. **Abstention threshold:** Choose the primary optimization objective, such as minimizing unsupported answers subject to a minimum answer coverage.
-8. **Trace backend:** Decide between Langfuse Cloud and self-hosting. Default telemetry must remain content-redacted in either case.
+8. **Trace backend:** Resolved for this repo: OpenTelemetry SDK with in-memory/JSONL/OTLP exporters. Langfuse moves to the separate monitoring project.
 9. **Cost calculation:** Define whether costs come from provider-reported usage, a versioned price table, or both. Price tables are time-sensitive and must carry a date.
 10. **Release gate:** Establish separate deterministic CI thresholds and larger offline release thresholds after baseline variance is measured.

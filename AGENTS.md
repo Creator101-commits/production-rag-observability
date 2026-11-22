@@ -14,8 +14,9 @@ uv run mypy src
 
 ## Platform support
 
-- macOS and Linux; Python 3.12; Docker is part of the planned delivery workflow.
+- macOS and Linux; Python 3.11-3.13; Docker is part of the delivery workflow.
 - CI must use the deterministic fake generation provider; hosted providers and telemetry are optional integrations.
+- Neural models (dense retrieval, cross-encoder reranking, NLI, HF generation) run only via the `neural` extra, typically on Kaggle; local tests inject fakes and never download models.
 
 ## Key conventions
 

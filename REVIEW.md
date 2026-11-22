@@ -1,18 +1,43 @@
 # Review and verification
 
-Scope: source modules, CLI behavior, evaluation mathematics, project claims, Kaggle scripts where present, and README figures.
-
-Enforced fail-closed citation ID checks, fixed approximate-token chunk limits, limited trace retention, excluded raw queries from validation-span attributes, and removed boilerplate-only evidence matches.
+Scope: source modules, CLI behavior, evaluation mathematics, benchmark
+orchestration, observability exporters, project claims, Kaggle scripts,
+and README figures.
 
 ## Verified locally
 
-- 35 tests passed with the repository's existing Python environment.
-- `ruff check .` passed, including tests, figure source, and Kaggle scripts.
-- `mypy src` passed.
-- The README image was rendered from code using Matplotlib and visually inspected. Its inputs/results and a source fingerprint are in `scripts/figure-data.json`.
+- pytest, ruff, and mypy pass on the CPU-safe suite; neural paths are
+  exercised through injected encoder, scorer, NLI, and provider fakes.
+- `uv sync --locked --all-groups` resolves cleanly.
+- The full `run_full_benchmark` orchestrator was smoke-tested locally
+  with fake components on the real eval file and fixture corpus; it
+  writes metrics, manifest, per-question JSONL, traces, and report.
+- OpenTelemetry spans carry redacted attributes only; exporter failures
+  are swallowed and counted.
+
+## Kaggle
+
+The GPU benchmark kernel (`kaggle/run_kaggle.py`) downloads and
+sha256-verifies the pinned NIST PDFs, resolves and records HF revisions,
+runs dev tuning, freezes the config, and evaluates test once. Results
+are curated verbatim into `results/`; the manifest `git_sha` is guarded
+by `scripts/kaggle_run.sh`.
 
 ## Limits
 
-The service uses hand-written paraphrases, hashed lexical vectors, lexical reranking, and deterministic generation. It does not ingest official PDFs or validate semantic entailment.
+- The eval set is 70 questions authored by a single person.
+- Required-point scoring is lexical after normalization.
+- NLI claim support is a model-based estimate, not verified entailment.
+- The CPU Docker image uses the fake provider and fixture corpus; real
+  model quality is only measured on Kaggle.
+- Docker was not available in the local environment; the CI docker job
+  covers the build and smoke test.
 
-Kaggle API access failed because the execution environment could not resolve its hostname. The private notebook was also unavailable through the browser. No GPU training or full-scale external benchmark result is claimed by this review. New CI workflows are configuration changes; their hosted execution must be checked after publication.
+## Protocol revision: v12 generation truncation correction
+
+Kaggle kernel v11 (git 69bf7ef) completed with a frozen test read. Reviewing its records showed every parse_failure in every generator candidate had completion_tokens == 384 == max_new_tokens: the model wrote run-on answer/claim strings and the JSON was cut mid-string. Dev evidence alone showed the same pattern (4/24 dev parse failures for the 3B k3, 3B k5, and 7B k3 candidates), which justified the correction. v12 tightens the output schema (answer maxLength 300, at most 4 claims of maxLength 300 with 1-3 citations each, reason maxLength 160), raises max_new_tokens to 768, shortens the prompted answer/claim budgets, and adds per-record hit_token_cap plus an aggregate truncation_rate; cap-truncated parse failures are classified "truncated" rather than "parse_failure". The v11 test read stands disclosed: required_point_recall 0.595, abstain F1 0.533, false_abstain_rate 0.351, 13/46 records cap-truncated.
+
+## Verified on Kaggle: v12 run
+
+- Smoke kernel `production-rag-observability-smoke` on git SHA `7105039`: delegated to the main kernel with `RAG_SMOKE=1` (3B fp16 candidate, 15 dev questions, k_ctx=5); manifest `git_sha` matched; constrained decoding enforced the schema bounds (raw answer exactly 300 chars at the cap); all 15 dev records parsed with zero parse failures and zero cap hits; gpu_seconds 210.8.
+- Full kernel `production-rag-observability-benchmark` on git SHA `71050399f2eb62ab0db48326fa90928df9ed78ad`: frozen config `hybrid-rrf-k10-w1-1` + `cross_encoder`@20, 512-token chunks, `qwen2.5-3b-fp16` k_ctx=5, threshold 0.000343 (effectively inactive); gpu_seconds 7256.9. Test: required_point_recall 0.869 [0.761, 0.950], abstain F1 0.947, false_answer_rate 0.000, false_abstain_rate 0.027, 5/46 token-cap hits all abstained as `truncated`, zero non-truncation parse failures. Outputs curated verbatim into `results/`.
