@@ -41,6 +41,9 @@ dev = [
     "pytest-cov>=5.0",
     "ruff>=0.6",
     "mypy>=1.11",
+    # Constrained-decoding schema tests run without the neural extra; the
+    # bound <0.12 matches the version verified on Kaggle (0.11.3).
+    "lm-format-enforcer>=0.11,<0.12",
 ]
 
 [build-system]

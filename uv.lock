@@ -1218,6 +1218,7 @@ otlp = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "lm-format-enforcer" },
     { name = "mypy" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -1248,6 +1249,7 @@ provides-extras = ["neural", "otlp"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "lm-format-enforcer", specifier = ">=0.11,<0.12" },
     { name = "mypy", specifier = ">=1.11" },
     { name = "pytest", specifier = ">=8.3" },
     { name = "pytest-cov", specifier = ">=5.0" },

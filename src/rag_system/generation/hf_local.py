@@ -45,7 +45,14 @@ OUTPUT_SCHEMA: dict[str, object] = {
             },
         },
         "abstain": {"type": "boolean"},
-        "reason": {"type": ["string", "null"], "maxLength": 160},
+        # anyOf, not a type union: lm-format-enforcer ignores maxLength on
+        # {"type": ["string", "null"]} but enforces it inside anyOf branches.
+        "reason": {
+            "anyOf": [
+                {"type": "string", "maxLength": 160},
+                {"type": "null"},
+            ]
+        },
     },
     "required": ["answer", "claims", "abstain", "reason"],
 }
