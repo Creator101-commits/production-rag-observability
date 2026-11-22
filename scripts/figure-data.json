@@ -1,6 +1,6 @@
 {
-  "source": "kaggle v12 sha 7105039",
-  "git_sha": "71050399f2eb62ab0db48326fa90928df9ed78ad",
+  "source": "kaggle v13 sha 94ac5e4",
+  "git_sha": "94ac5e4c80f5d8845b6f00c7496532db691f19e4",
   "frozen": {
     "provider": "qwen2.5-3b-fp16",
     "k_ctx": 5,
@@ -118,39 +118,39 @@
   "latency_by_stage": {
     "retrieval": {
       "count": 70,
-      "p50_ms": 13.1143945,
-      "p95_ms": 14.252900299999999,
-      "mean_ms": 13.087643885714282
+      "p50_ms": 13.1003535,
+      "p95_ms": 14.99942585,
+      "mean_ms": 13.3770577
     },
     "fusion": {
       "count": 70,
-      "p50_ms": 0.1001515,
-      "p95_ms": 0.12939885,
-      "mean_ms": 0.10456298571428572
+      "p50_ms": 0.10995250000000001,
+      "p95_ms": 0.14046989999999998,
+      "mean_ms": 0.11343077142857144
     },
     "rerank": {
       "count": 70,
-      "p50_ms": 670.6398855,
-      "p95_ms": 698.0407711,
-      "mean_ms": 674.3157649714286
+      "p50_ms": 664.868289,
+      "p95_ms": 676.98157895,
+      "mean_ms": 661.3931165
     },
     "request": {
       "count": 70,
-      "p50_ms": 683.60548,
-      "p95_ms": 711.04608565,
-      "mean_ms": 687.9795219142857
+      "p50_ms": 678.6256149999999,
+      "p95_ms": 691.6369323,
+      "mean_ms": 675.3860843285715
     },
     "nli_scoring": {
       "count": 127,
-      "p50_ms": 511.012235,
-      "p95_ms": 1470.9131074999998,
-      "mean_ms": 667.534872110236
+      "p50_ms": 496.741887,
+      "p95_ms": 1481.6757688999994,
+      "mean_ms": 659.6334972204726
     },
     "generation": {
       "count": 280,
-      "p50_ms": 20255.1419595,
-      "p95_ms": 65305.388553500015,
-      "mean_ms": 25446.020444914288
+      "p50_ms": 18918.0807925,
+      "p95_ms": 46551.24983305,
+      "mean_ms": 23465.49507307143
     }
   },
   "e2e": {
@@ -194,16 +194,16 @@
     "nli_whole_chunk_support_rate": 0.125,
     "abstention_sources": {
       "citation_validation": 1,
-      "truncated": 5,
-      "model_abstain": 4
+      "model_abstain": 9
     },
     "prompt_tokens_total": 132041,
-    "completion_tokens_total": 9298,
+    "completion_tokens_total": 5888,
     "mean_prompt_tokens": 2870.4565217391305,
-    "mean_completion_tokens": 202.1304347826087,
-    "parse_failures": 5,
-    "token_cap_hits": 5,
-    "truncation_rate": 0.10869565217391304
+    "mean_completion_tokens": 128.0,
+    "parse_failures": 0,
+    "token_cap_hits": 0,
+    "truncation_rate": 0.0,
+    "schema_bound_violations": 0
   },
   "generator_ablations": {
     "qwen2.5-3b-fp16__k3": {
@@ -247,17 +247,17 @@
       "nli_whole_chunk_support_rate": 0.11320754716981132,
       "abstention_sources": {
         "citation_validation": 1,
-        "truncated": 2,
-        "model_abstain": 6,
+        "model_abstain": 8,
         "parse_failure": 1
       },
       "prompt_tokens_total": 83982,
-      "completion_tokens_total": 7546,
+      "completion_tokens_total": 6179,
       "mean_prompt_tokens": 1825.695652173913,
-      "mean_completion_tokens": 164.04347826086956,
-      "parse_failures": 3,
-      "token_cap_hits": 2,
-      "truncation_rate": 0.043478260869565216
+      "mean_completion_tokens": 134.32608695652175,
+      "parse_failures": 1,
+      "token_cap_hits": 0,
+      "truncation_rate": 0.0,
+      "schema_bound_violations": 0
     },
     "qwen2.5-3b-fp16__k5": {
       "num_questions": 46,
@@ -300,16 +300,16 @@
       "nli_whole_chunk_support_rate": 0.125,
       "abstention_sources": {
         "citation_validation": 1,
-        "truncated": 5,
-        "model_abstain": 4
+        "model_abstain": 9
       },
       "prompt_tokens_total": 132041,
-      "completion_tokens_total": 9298,
+      "completion_tokens_total": 5888,
       "mean_prompt_tokens": 2870.4565217391305,
-      "mean_completion_tokens": 202.1304347826087,
-      "parse_failures": 5,
-      "token_cap_hits": 5,
-      "truncation_rate": 0.10869565217391304
+      "mean_completion_tokens": 128.0,
+      "parse_failures": 0,
+      "token_cap_hits": 0,
+      "truncation_rate": 0.0,
+      "schema_bound_violations": 0
     },
     "qwen2.5-7b-nf4__k3": {
       "num_questions": 46,
@@ -359,7 +359,8 @@
       "mean_completion_tokens": 124.21739130434783,
       "parse_failures": 0,
       "token_cap_hits": 0,
-      "truncation_rate": 0.0
+      "truncation_rate": 0.0,
+      "schema_bound_violations": 0
     },
     "qwen2.5-7b-nf4__k5": {
       "num_questions": 46,
@@ -410,11 +411,13 @@
       "mean_completion_tokens": 129.2826086956522,
       "parse_failures": 0,
       "token_cap_hits": 0,
-      "truncation_rate": 0.0
+      "truncation_rate": 0.0,
+      "schema_bound_violations": 0
     }
   },
   "notes": [
-    "v12 correction run: bounded JSON schema (answer/claims/citations/reason maxLength, claims/citations maxItems) with max_new_tokens=768; records that hit the cap and fail to parse abstain as 'truncated'.",
-    "e2e includes token_cap_hits and truncation_rate from the v12 observability fields."
+    "v13 correction run: reason bound moved to anyOf so lm-format-enforcer enforces it; post-generation guard counts raw_output schema violations (0 on dev and test).",
+    "token_cap_hits and truncation_rate are 0 for every candidate; v12's 5/46 test cap hits were unbounded reason strings.",
+    "latency 'request' spans cover the retrieval sweep only (70 questions); generation spans are per provider.generate call (280 = 70 questions x 4 candidates)."
   ]
 }
