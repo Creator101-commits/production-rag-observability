@@ -204,6 +204,33 @@ Kaggle kernel v13, git SHA `94ac5e4`, Tesla T4. Frozen system: `hybrid-rrf-k10-w
 | nli_scoring | 496.7 | 1481.7 |
 | request (retrieval sweep only) | 678.6 | 691.6 |
 
+### What the figure shows
+
+- (a) Retrieval ablation, test: all 13 systems on nDCG@10 and Hit@5.
+  BM25 (0.602) beats dense BGE (0.517); the best nDCG@10 is hybrid
+  k10 w2:1 at 0.625, while the frozen end-to-end row (k10 w1:1 plus
+  cross-encoder rerank, amber) reaches the best Hit@5, 0.973, and MRR
+  0.883.
+- (b) Stage latency, test spans on a log axis: generation dominates by
+  orders of magnitude (median about 19.0 s per call, pooled over 280
+  calls, tail to about 80 s); the cross-encoder rerank adds about
+  0.67 s and NLI scoring about 0.50 s median with a tail to about
+  2.1 s; retrieval (13 ms) and fusion (0.1 ms) are negligible.
+- (c) End-to-end quality of the frozen system: required-point recall
+  0.869 [0.761, 0.950], all-points-covered 0.811, abstain F1 0.947,
+  citation label validity a perfect 1.000, citation page precision
+  0.799, citation hit rate 0.861, and the weakest number, NLI claim
+  support, an estimated 0.661.
+- (d) Generator x context, test: the frozen 3B k=5 candidate reaches
+  recall 0.869 with false-abstain 0.027; 7B k=3 posts a slightly higher
+  recall (0.910) but the 7B k=5 candidate collapses entirely (recall
+  0.405, false-abstain 0.541).
+
+The headline: the frozen hybrid retrieval plus cross-encoder rerank
+and 3B k=5 generator answers 87% of required evidence points with
+perfect citation validity, and generation is essentially the entire
+serving cost.
+
 ## Findings
 
 - **RQ1 (lexical vs dense)**: BM25 (nDCG@10 0.602, Hit@5 0.946) beats dense BGE (0.517, 0.811) on test; the best hybrid reaches 0.625 nDCG@10. Dense actually won on dev, so the ordering is not stable across splits; with 37 answerable questions and no CIs on these ablations, small differences should not be over-read.
@@ -242,7 +269,11 @@ docker build -t rag-system .   # CPU image, fake provider + fixture index
 
 ## Reproducing the figure
 
-`image.png` is rendered from `scripts/figure-data.json` (generated from `results/metrics.json` + `manifest.json`). Run `uv run --with matplotlib python scripts/render_figure.py` in an environment with Matplotlib; the plotting dependency is separate from the core runtime.
+`image.png` is rendered only from `results/` (`metrics.json`,
+`manifest.json`, `traces.jsonl`) via `scripts/render_figure.py`. Run
+`uv run --with matplotlib python scripts/render_figure.py` in an
+environment with Matplotlib; the plotting dependency is separate from
+the core runtime.
 
 ## License
 
