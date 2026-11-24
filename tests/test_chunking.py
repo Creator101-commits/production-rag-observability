@@ -43,7 +43,6 @@ def test_chunk_document_links() -> None:
     chunks = chunk_document(doc, chunk_size_tokens=40, chunk_overlap_tokens=10)
     assert len(chunks) >= 3
 
-    # Check pointer connectivity
     assert chunks[0].previous_chunk_id is None
     assert chunks[0].next_chunk_id == chunks[1].chunk_id
     assert chunks[1].previous_chunk_id == chunks[0].chunk_id

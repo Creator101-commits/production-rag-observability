@@ -36,7 +36,6 @@ class BenchmarkRunner:
             default_abstain_threshold=self.config.evidence_score_threshold
         )
 
-        # Index corpus
         docs = load_offline_fixture_corpus()
         chunks = []
         for doc in docs:
@@ -104,7 +103,6 @@ class BenchmarkRunner:
                             break
                     mrrs.append(mrr)
 
-                # Generation
                 gen_req = GenerationRequest(
                     query=q.question,
                     evidence_list=top_evidence,
@@ -137,7 +135,6 @@ class BenchmarkRunner:
                 gen_resp.prompt_tokens, gen_resp.completion_tokens
             )
 
-            # Abstention tracking
             is_answered = gen_resp.status == "answered"
             y_true_answerable.append(q.answerable)
             y_pred_answered.append(is_answered)

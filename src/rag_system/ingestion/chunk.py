@@ -28,7 +28,6 @@ def chunk_page(
     if not tokens:
         return []
 
-    # If page fits in one chunk
     if len(tokens) <= chunk_size_tokens:
         chunk_id = Chunk.generate_chunk_id(doc.document_id, page.page_number, 0, clean_text)
         return [
@@ -90,7 +89,6 @@ def chunk_document(
         )
         raw_chunks.extend(page_chunks)
 
-    # Wire previous and next chunk links
     linked_chunks: list[Chunk] = []
     n = len(raw_chunks)
     for i, c in enumerate(raw_chunks):
