@@ -215,7 +215,11 @@ Kaggle kernel v13, git SHA `94ac5e4`, Tesla T4. Frozen system: `hybrid-rrf-k10-w
   orders of magnitude (median about 19.0 s per call, pooled over 280
   calls, tail to about 80 s); the cross-encoder rerank adds about
   0.67 s and NLI scoring about 0.50 s median with a tail to about
-  2.1 s; retrieval (13 ms) and fusion (0.1 ms) are negligible.
+  2.1 s; retrieval (13 ms) and fusion (0.1 ms) are negligible. The
+  "retrieval request" lane covers only the retrieval sweep spans
+  (retrieval, fusion, rerank over 70 questions, median about
+  0.68 s); generation and NLI are traced in the separate generator
+  sweep, so the lanes do not add up to one end-to-end request.
 - (c) End-to-end quality of the frozen system: required-point recall
   0.869 [0.761, 0.950], all-points-covered 0.811, abstain F1 0.947,
   citation label validity a perfect 1.000, citation page precision
