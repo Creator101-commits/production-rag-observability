@@ -8,7 +8,7 @@ cross-encoder reranking, structured JSON generation with code-level
 citation validation and abstention, and OpenTelemetry spans
 throughout.
 
-![RAG observability results](image.png)
+![RAG observability results: retrieval ablations over all systems, per-stage latency from traced spans, frozen-system quality and generator ablation](image.png)
 
 The figure follows one frozen benchmark: (a) retrieval ablations over
 all 13 systems, (b) per-stage latency from exported spans, (c) end-to-end
