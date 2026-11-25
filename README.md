@@ -1,6 +1,6 @@
 # Production RAG Observability
 
-> Answering questions about the NIST AI risk framework with real citations: 0.87 recall, zero wrong answers, every stage traced.
+> Traced RAG with citations
 
 Can a small local model answer questions over the NIST AI Risk
 Management Framework with citations that support the claims,
@@ -15,12 +15,17 @@ throughout.
 The figure follows one frozen benchmark: (a) retrieval ablations over
 all 13 systems, (b) per-stage latency from exported spans, (c) end-to-end
 quality of the frozen system, (d) generator and context-size ablation.
+Panel (b) mixes separate sweeps: generation and NLI spans are traced in
+the generator sweep, so the stages do not sum to one request; the traced
+lane covers retrieval, fusion and rerank only.
 
 ## Results
 
 Frozen system on the 46-question test split (37 answerable, 9
 unanswerable): `hybrid-rrf-k10-w1-1` plus cross-encoder rerank@20,
 512-token chunks, `qwen2.5-3b-fp16` with 5 evidence chunks, kernel v13.
+The 70-question eval set was authored by one person, so treat it as a
+smoke benchmark.
 
 | Metric | Value |
 | :--- | ---: |
@@ -79,18 +84,3 @@ uv run ruff check .
 uv run mypy src
 ./scripts/kaggle_run.sh   # full kernel: ingest, tune on dev, freeze, test
 ```
-
-## Notes
-
-- Per-stage latencies come from separate sweeps: generation and NLI
-  spans are traced in the generator sweep, so they do not sum to one
-  request; the lane labelled "retrieval request" covers retrieval,
-  fusion and rerank only.
-- The eval set is 70 questions authored by one person (dev 24, test
-  46); treat it as a smoke benchmark. NLI claim support is a
-  model-based estimate, not verified entailment.
-- Kernel history: v11 completed a frozen test read before the v12/v13
-  output-bound corrections; v13 (git 94ac5e4) has zero schema-bound
-  violations; headline metrics are unchanged from v12.
-- Data: two sha256-pinned NIST AI RMF PDFs; `results/` holds curated
-  kernel output and `image.png` renders from it.
