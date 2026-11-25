@@ -1,5 +1,7 @@
 # Production RAG Observability
 
+> Answering questions about the NIST AI risk framework with real citations: 0.87 recall, zero wrong answers, every stage traced.
+
 Can a small local model answer questions over the NIST AI Risk
 Management Framework with citations that support the claims,
 and refuse when the evidence is not there? This project builds it
